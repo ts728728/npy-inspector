@@ -9,6 +9,23 @@ Turns an opaque folder of `.npy` / `.npz` files into a structure map you can
 read at a glance. Built for the case where you did **not** create the dataset
 and have no README: the script has to discover the organization itself.
 
+## Cost
+
+Scanning cost does not scale with dataset size, which is worth saying out loud
+when a user hesitates to point it at a 400 GB folder. The scan reads headers and
+a strided sample, never the bulk data, so what comes back describes structure:
+
+| Dataset | `stdout` | JSON |
+|---|---|---|
+| 6.5 GB, 1 array | 4 lines, 261 chars | 1.5 KB |
+| 1.0 MB, 73 arrays, nested | 9 lines, 377 chars | 91.3 KB |
+
+The stdout summary is capped at ~20 lines regardless (`label_hints[:15]`,
+`errors[:5]`, three artifact paths). What costs tokens is the **node count** —
+files × arrays × depth — bounded by `--max-files` and `--max-depth`. The one
+shape that can still grow the JSON is a single npz with tens of thousands of
+keys, since npz keys are always listed in full.
+
 ## When to use
 
 - "I have a dataset on drive D full of npy/npz, I don't know its structure."

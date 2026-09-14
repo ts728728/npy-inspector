@@ -25,6 +25,27 @@ and it breaks the moment something is `dtype=object`.
 
 This does that loop properly, recursively, and draws the result.
 
+## Cost
+
+**Token cost does not scale with dataset size.** The scan reads array headers
+and a strided sample — never the bulk data — so what comes back describes
+*structure*, and structure is not what makes a dataset big. Measured:
+
+| Dataset | `stdout` | JSON |
+|---|---|---|
+| 6.5 GB, 1 array in 1 file | 4 lines, 261 chars | **1.5 KB** |
+| 1.0 MB, 73 arrays, nested | 9 lines, 377 chars | **91.3 KB** |
+
+A 6,500× larger dataset produced a 60× *smaller* artifact. The stdout summary is
+capped at ~20 lines no matter what (`label_hints[:15]`, `errors[:5]`, and three
+artifact paths).
+
+What does cost tokens is the **number of structural nodes** — files × arrays ×
+nesting depth — and that is bounded by `--max-files` (400) and `--max-depth` (6).
+One honest caveat: npz keys are always listed in full, so a single npz with tens
+of thousands of keys is the one shape that can still grow the JSON. Nothing else
+about a 400 GB folder makes it more expensive to look at than a 1 GB one.
+
 ## Install
 
 **As a Claude Code skill** — clone it into your skills directory:
@@ -212,6 +233,24 @@ MIT — see [LICENSE](LICENSE).
 失效。
 
 这个东西把这个循环做对了、做全了，并且把结果画出来。
+
+## 开销
+
+**所耗 token 与数据集体积无关。** 扫描只读数组头部和抽样，从不读数据本体，
+所以返回的是**结构**——而让数据集变大的从来不是结构。实测：
+
+| 数据集 | `stdout` | JSON |
+|---|---|---|
+| 6.5GB，1 个文件 1 个数组 | 4 行 261 字符 | **1.5 KB** |
+| 1.0MB，73 个数组，多层嵌套 | 9 行 377 字符 | **91.3 KB** |
+
+数据集大 6500 倍，产物反而小 60 倍。命令行摘要无论数据集多大都封在 20 行以内
+（`label_hints[:15]`、`errors[:5]`，加 3 条产物路径）。
+
+真正消耗 token 的是**结构节点数**——文件数 × 数组数 × 嵌套层数——而它被
+`--max-files`（400）和 `--max-depth`（6）约束着。一个诚实的补充：npz 的键是
+全量列举的，所以「单个 npz 里有上万把键」是唯一还能把 JSON 撑大的形状。
+除此之外，400GB 的文件夹并不会比 1GB 的更费 token。
 
 ## 安装
 
