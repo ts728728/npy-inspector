@@ -1,0 +1,18 @@
+# Outputs the tool itself produces -- never commit a scan of your real data
+*_structure_map/
+*_structure_map.html
+*_structure_map.png
+*_structure_map.json
+
+# ...except the checked-in demo outputs under examples/
+!examples/
+!examples/**
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

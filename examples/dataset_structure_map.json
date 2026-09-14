@@ -1,0 +1,3090 @@
+{
+  "name": "dataset",
+  "kind": "root",
+  "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset",
+  "detail": "3 个数组文件 · 1 个读取失败 @ …/examples/dataset",
+  "children": [
+    {
+      "name": ".",
+      "kind": "folder",
+      "detail": "子目录",
+      "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset",
+      "children": [
+        {
+          "name": "behavior.npy",
+          "kind": "file",
+          "detail": "11.8KB",
+          "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset\\behavior.npy",
+          "npz": false,
+          "children": [
+            {
+              "name": "behavior",
+              "kind": "array",
+              "detail": "(500, 3)  float64",
+              "acc": "",
+              "stats": {
+                "shape": [
+                  500,
+                  3
+                ],
+                "dtype": "float64",
+                "size": 1500,
+                "nbytes": 12000,
+                "ndim": 2,
+                "min": -3.4359,
+                "max": 3.5804,
+                "mean": 0.0171,
+                "std": 1.0118,
+                "n_unique": 1500
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            }
+          ],
+          "_agg": {
+            "files": 1,
+            "arrays": 1,
+            "scalars": 0,
+            "bytes": 12128,
+            "label_hints": [],
+            "errors": []
+          }
+        },
+        {
+          "name": "broken.npy",
+          "kind": "error",
+          "detail": "19B   打开失败: UnpicklingError",
+          "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset\\broken.npy",
+          "npz": false,
+          "children": [],
+          "error": "UnpicklingError: Failed to interpret file WindowsPath('C:/Users/18307110046/.claude/skills/npy-inspector/examples/dataset/broken.npy') as a pickle",
+          "_agg": {
+            "files": 0,
+            "arrays": 0,
+            "scalars": 0,
+            "bytes": 0,
+            "label_hints": [],
+            "errors": [
+              "broken.npy"
+            ]
+          }
+        },
+        {
+          "name": "session_01.npz",
+          "kind": "file",
+          "detail": "228.2KB   · npz · 5 个键",
+          "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset\\session_01.npz",
+          "npz": true,
+          "children": [
+            {
+              "name": "dff",
+              "kind": "array",
+              "detail": "(1200, 40)  float32",
+              "acc": "['dff']",
+              "stats": {
+                "shape": [
+                  1200,
+                  40
+                ],
+                "dtype": "float32",
+                "size": 48000,
+                "nbytes": 192000,
+                "ndim": 2,
+                "min": -4.4941,
+                "max": 4.732,
+                "mean": -2.673e-05,
+                "std": 1.0008,
+                "n_unique": 47988
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "labels",
+              "kind": "array",
+              "detail": "(1200,)  int64",
+              "acc": "['labels']",
+              "stats": {
+                "shape": [
+                  1200
+                ],
+                "dtype": "int64",
+                "size": 1200,
+                "nbytes": 9600,
+                "ndim": 1,
+                "min": 0.0,
+                "max": 6.0,
+                "mean": 3.0383,
+                "std": 1.9635,
+                "n_unique": 7,
+                "label_hint": "疑似类别标签（7 类）",
+                "unique_values": [
+                  0.0,
+                  1.0,
+                  2.0,
+                  3.0,
+                  4.0,
+                  5.0,
+                  6.0
+                ]
+              },
+              "children": [],
+              "hint": "疑似类别标签（7 类）",
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [
+                  "labels  —  疑似类别标签（7 类）"
+                ],
+                "errors": []
+              }
+            },
+            {
+              "name": "conditions",
+              "kind": "array",
+              "detail": "(1200,)  <U6",
+              "acc": "['conditions']",
+              "stats": {
+                "shape": [
+                  1200
+                ],
+                "dtype": "<U6",
+                "size": 1200,
+                "nbytes": 28800,
+                "ndim": 1,
+                "sample": [
+                  "cond_0",
+                  "cond_1",
+                  "cond_2",
+                  "cond_3",
+                  "cond_0"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "valid_mask",
+              "kind": "array",
+              "detail": "(1200,)  bool",
+              "acc": "['valid_mask']",
+              "stats": {
+                "shape": [
+                  1200
+                ],
+                "dtype": "bool",
+                "size": 1200,
+                "nbytes": 1200,
+                "ndim": 1,
+                "min": 0.0,
+                "max": 1.0,
+                "mean": 0.4383,
+                "std": 0.4962,
+                "n_unique": 2,
+                "label_hint": "布尔掩码",
+                "unique_values": [
+                  0.0,
+                  1.0
+                ]
+              },
+              "children": [],
+              "hint": "布尔掩码",
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [
+                  "valid_mask  —  布尔掩码"
+                ],
+                "errors": []
+              }
+            },
+            {
+              "name": "meta",
+              "kind": "object_array",
+              "detail": "(3,)  object",
+              "acc": "['meta']",
+              "stats": {
+                "shape": [
+                  3
+                ],
+                "dtype": "object",
+                "size": 3,
+                "nbytes": 24,
+                "ndim": 1,
+                "kind": "object",
+                "element_types": {
+                  "dict": 3
+                }
+              },
+              "children": [
+                {
+                  "name": "[0]",
+                  "kind": "dict",
+                  "detail": "dict · 3 键",
+                  "acc": "[0]",
+                  "children": [
+                    {
+                      "name": "session_id",
+                      "kind": "scalar",
+                      "detail": "0",
+                      "acc": "['session_id']",
+                      "children": [],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 0,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "bad_frames",
+                      "kind": "array",
+                      "detail": "(5,)  int64",
+                      "acc": "['bad_frames']",
+                      "stats": {
+                        "shape": [
+                          5
+                        ],
+                        "dtype": "int64",
+                        "size": 5,
+                        "nbytes": 40,
+                        "ndim": 1,
+                        "min": 11.0,
+                        "max": 38.0,
+                        "mean": 26.6,
+                        "std": 11.9766,
+                        "n_unique": 5,
+                        "label_hint": "疑似类别标签（5 类）",
+                        "unique_values": [
+                          11.0,
+                          13.0,
+                          35.0,
+                          36.0,
+                          38.0
+                        ],
+                        "values": [
+                          "[35 11 38 13 36]"
+                        ]
+                      },
+                      "children": [],
+                      "hint": "疑似类别标签（5 类）",
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [
+                          "bad_frames  —  疑似类别标签（5 类）"
+                        ],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "nested",
+                      "kind": "dict",
+                      "detail": "dict · 2 键",
+                      "acc": "['nested']",
+                      "children": [
+                        {
+                          "name": "depth",
+                          "kind": "scalar",
+                          "detail": "0",
+                          "acc": "['depth']",
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 0,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        },
+                        {
+                          "name": "vec",
+                          "kind": "array",
+                          "detail": "(8,)  float64",
+                          "acc": "['vec']",
+                          "stats": {
+                            "shape": [
+                              8
+                            ],
+                            "dtype": "float64",
+                            "size": 8,
+                            "nbytes": 64,
+                            "ndim": 1,
+                            "min": -1.5196,
+                            "max": 1.3248,
+                            "mean": -0.1668,
+                            "std": 0.8908,
+                            "n_unique": 8,
+                            "unique_values": [
+                              -1.5196,
+                              -1.2731,
+                              -0.4917,
+                              -0.4167,
+                              0.143,
+                              0.2967,
+                              0.6019,
+                              1.3248
+                            ],
+                            "values": [
+                              "[ 0.297 -0.417  0.143 -1.273 -1.52   1.325  0.602 -0.492]"
+                            ]
+                          },
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 1,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        }
+                      ],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    }
+                  ],
+                  "_agg": {
+                    "files": 0,
+                    "arrays": 2,
+                    "scalars": 0,
+                    "bytes": 0,
+                    "label_hints": [
+                      "bad_frames  —  疑似类别标签（5 类）"
+                    ],
+                    "errors": []
+                  }
+                },
+                {
+                  "name": "[1]",
+                  "kind": "dict",
+                  "detail": "dict · 3 键",
+                  "acc": "[1]",
+                  "children": [
+                    {
+                      "name": "session_id",
+                      "kind": "scalar",
+                      "detail": "1",
+                      "acc": "['session_id']",
+                      "children": [],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 0,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "bad_frames",
+                      "kind": "array",
+                      "detail": "(5,)  int64",
+                      "acc": "['bad_frames']",
+                      "stats": {
+                        "shape": [
+                          5
+                        ],
+                        "dtype": "int64",
+                        "size": 5,
+                        "nbytes": 40,
+                        "ndim": 1,
+                        "min": 9.0,
+                        "max": 48.0,
+                        "mean": 34.8,
+                        "std": 14.1195,
+                        "n_unique": 5,
+                        "label_hint": "疑似类别标签（5 类）",
+                        "unique_values": [
+                          9.0,
+                          31.0,
+                          41.0,
+                          45.0,
+                          48.0
+                        ],
+                        "values": [
+                          "[48 31  9 41 45]"
+                        ]
+                      },
+                      "children": [],
+                      "hint": "疑似类别标签（5 类）",
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [
+                          "bad_frames  —  疑似类别标签（5 类）"
+                        ],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "nested",
+                      "kind": "dict",
+                      "detail": "dict · 2 键",
+                      "acc": "['nested']",
+                      "children": [
+                        {
+                          "name": "depth",
+                          "kind": "scalar",
+                          "detail": "2",
+                          "acc": "['depth']",
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 0,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        },
+                        {
+                          "name": "vec",
+                          "kind": "array",
+                          "detail": "(8,)  float64",
+                          "acc": "['vec']",
+                          "stats": {
+                            "shape": [
+                              8
+                            ],
+                            "dtype": "float64",
+                            "size": 8,
+                            "nbytes": 64,
+                            "ndim": 1,
+                            "min": -1.4433,
+                            "max": 1.0704,
+                            "mean": -0.2168,
+                            "std": 0.9271,
+                            "n_unique": 8,
+                            "unique_values": [
+                              -1.4433,
+                              -1.1523,
+                              -0.9862,
+                              -0.7556,
+                              0.2166,
+                              0.3125,
+                              1.0034,
+                              1.0704
+                            ],
+                            "values": [
+                              "[-0.986 -1.152  1.003 -0.756  0.313  0.217  1.07  -1.443]"
+                            ]
+                          },
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 1,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        }
+                      ],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    }
+                  ],
+                  "_agg": {
+                    "files": 0,
+                    "arrays": 2,
+                    "scalars": 0,
+                    "bytes": 0,
+                    "label_hints": [
+                      "bad_frames  —  疑似类别标签（5 类）"
+                    ],
+                    "errors": []
+                  }
+                },
+                {
+                  "name": "[2]",
+                  "kind": "dict",
+                  "detail": "dict · 3 键",
+                  "acc": "[2]",
+                  "children": [
+                    {
+                      "name": "session_id",
+                      "kind": "scalar",
+                      "detail": "2",
+                      "acc": "['session_id']",
+                      "children": [],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 0,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "bad_frames",
+                      "kind": "array",
+                      "detail": "(5,)  int64",
+                      "acc": "['bad_frames']",
+                      "stats": {
+                        "shape": [
+                          5
+                        ],
+                        "dtype": "int64",
+                        "size": 5,
+                        "nbytes": 40,
+                        "ndim": 1,
+                        "min": 13.0,
+                        "max": 33.0,
+                        "mean": 28.0,
+                        "std": 7.5631,
+                        "n_unique": 4,
+                        "label_hint": "疑似类别标签（4 类）",
+                        "unique_values": [
+                          13.0,
+                          30.0,
+                          32.0,
+                          33.0
+                        ],
+                        "values": [
+                          "[13 33 32 32 30]"
+                        ]
+                      },
+                      "children": [],
+                      "hint": "疑似类别标签（4 类）",
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [
+                          "bad_frames  —  疑似类别标签（4 类）"
+                        ],
+                        "errors": []
+                      }
+                    },
+                    {
+                      "name": "nested",
+                      "kind": "dict",
+                      "detail": "dict · 2 键",
+                      "acc": "['nested']",
+                      "children": [
+                        {
+                          "name": "depth",
+                          "kind": "scalar",
+                          "detail": "4",
+                          "acc": "['depth']",
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 0,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        },
+                        {
+                          "name": "vec",
+                          "kind": "array",
+                          "detail": "(8,)  float64",
+                          "acc": "['vec']",
+                          "stats": {
+                            "shape": [
+                              8
+                            ],
+                            "dtype": "float64",
+                            "size": 8,
+                            "nbytes": 64,
+                            "ndim": 1,
+                            "min": -0.8006,
+                            "max": 1.8009,
+                            "mean": 0.3731,
+                            "std": 0.884,
+                            "n_unique": 8,
+                            "unique_values": [
+                              -0.8006,
+                              -0.6221,
+                              -0.1296,
+                              0.0833,
+                              0.3023,
+                              0.847,
+                              1.5038,
+                              1.8009
+                            ],
+                            "values": [
+                              "[ 1.801 -0.801  0.302 -0.13   1.504  0.847  0.083 -0.622]"
+                            ]
+                          },
+                          "children": [],
+                          "_agg": {
+                            "files": 0,
+                            "arrays": 1,
+                            "scalars": 0,
+                            "bytes": 0,
+                            "label_hints": [],
+                            "errors": []
+                          }
+                        }
+                      ],
+                      "_agg": {
+                        "files": 0,
+                        "arrays": 1,
+                        "scalars": 0,
+                        "bytes": 0,
+                        "label_hints": [],
+                        "errors": []
+                      }
+                    }
+                  ],
+                  "_agg": {
+                    "files": 0,
+                    "arrays": 2,
+                    "scalars": 0,
+                    "bytes": 0,
+                    "label_hints": [
+                      "bad_frames  —  疑似类别标签（4 类）"
+                    ],
+                    "errors": []
+                  }
+                }
+              ],
+              "_agg": {
+                "files": 0,
+                "arrays": 7,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [
+                  "bad_frames  —  疑似类别标签（5 类）"
+                ],
+                "errors": []
+              }
+            }
+          ],
+          "_agg": {
+            "files": 1,
+            "arrays": 11,
+            "scalars": 0,
+            "bytes": 233664,
+            "label_hints": [
+              "labels  —  疑似类别标签（7 类）",
+              "valid_mask  —  布尔掩码",
+              "bad_frames  —  疑似类别标签（5 类）"
+            ],
+            "errors": []
+          }
+        }
+      ],
+      "_agg": {
+        "files": 2,
+        "arrays": 12,
+        "scalars": 0,
+        "bytes": 245792,
+        "label_hints": [
+          "labels  —  疑似类别标签（7 类）",
+          "valid_mask  —  布尔掩码",
+          "bad_frames  —  疑似类别标签（5 类）"
+        ],
+        "errors": [
+          "broken.npy"
+        ]
+      }
+    },
+    {
+      "name": "nested",
+      "kind": "folder",
+      "detail": "子目录",
+      "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset\\nested",
+      "children": [
+        {
+          "name": "deep.npz",
+          "kind": "file",
+          "detail": "797.8KB   · npz · 61 个键",
+          "path": "C:\\Users\\18307110046\\.claude\\skills\\npy-inspector\\examples\\dataset\\nested\\deep.npz",
+          "npz": true,
+          "children": [
+            {
+              "name": "key_000",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_000']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.8458,
+                "max": 0.6604,
+                "mean": -0.4105,
+                "std": 0.9342,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.8458,
+                  -0.5583,
+                  0.1017,
+                  0.6604
+                ],
+                "values": [
+                  "[ 0.66  -1.846 -0.558  0.102]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_001",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_001']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.9709,
+                "max": 0.2594,
+                "mean": -0.2988,
+                "std": 0.4398,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.9709,
+                  -0.2857,
+                  -0.1978,
+                  0.2594
+                ],
+                "values": [
+                  "[-0.286 -0.198  0.259 -0.971]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_002",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_002']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.492,
+                "max": 1.1836,
+                "mean": -0.2424,
+                "std": 1.0786,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.492,
+                  -1.0527,
+                  0.3916,
+                  1.1836
+                ],
+                "values": [
+                  "[-1.053  1.184  0.392 -1.492]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_003",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_003']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.8412,
+                "max": 1.2436,
+                "mean": 0.0895,
+                "std": 0.8308,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.8412,
+                  -0.541,
+                  0.4964,
+                  1.2436
+                ],
+                "values": [
+                  "[-0.541  0.496 -0.841  1.244]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_004",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_004']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.2029,
+                "max": 2.2012,
+                "mean": 0.059,
+                "std": 1.2954,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.2029,
+                  -0.6483,
+                  -0.114,
+                  2.2012
+                ],
+                "values": [
+                  "[ 2.201 -0.648 -1.203 -0.114]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_005",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_005']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": 0.4742,
+                "max": 1.6136,
+                "mean": 1.0479,
+                "std": 0.4365,
+                "n_unique": 4,
+                "unique_values": [
+                  0.4742,
+                  0.8142,
+                  1.2894,
+                  1.6136
+                ],
+                "values": [
+                  "[1.289 1.614 0.474 0.814]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_006",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_006']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.3546,
+                "max": 0.7718,
+                "mean": -0.129,
+                "std": 0.7829,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.3546,
+                  -0.1732,
+                  0.2402,
+                  0.7718
+                ],
+                "values": [
+                  "[ 0.772 -1.355  0.24  -0.173]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_007",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_007']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.4649,
+                "max": 1.5662,
+                "mean": 0.4087,
+                "std": 0.7431,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.4649,
+                  0.0857,
+                  0.4478,
+                  1.5662
+                ],
+                "values": [
+                  "[ 0.448 -0.465  1.566  0.086]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_008",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_008']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.9913,
+                "max": 0.6573,
+                "mean": -0.1656,
+                "std": 0.6573,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.9913,
+                  -0.5939,
+                  0.2656,
+                  0.6573
+                ],
+                "values": [
+                  "[ 0.657 -0.991  0.266 -0.594]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_009",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_009']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.7546,
+                "max": 0.5333,
+                "mean": -0.2519,
+                "std": 0.9024,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.7546,
+                  -0.1434,
+                  0.3572,
+                  0.5333
+                ],
+                "values": [
+                  "[ 0.357 -0.143  0.533 -1.755]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_010",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_010']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.2688,
+                "max": 1.9559,
+                "mean": 0.6221,
+                "std": 0.8186,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.2688,
+                  0.3305,
+                  0.4706,
+                  1.9559
+                ],
+                "values": [
+                  "[-0.269  0.471  0.33   1.956]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_011",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_011']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.3612,
+                "max": 1.3675,
+                "mean": -0.3635,
+                "std": 1.1033,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.3612,
+                  -1.2817,
+                  -0.1785,
+                  1.3675
+                ],
+                "values": [
+                  "[-1.282  1.367 -0.179 -1.361]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_012",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_012']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.2398,
+                "max": 1.1076,
+                "mean": -0.428,
+                "std": 0.9103,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.2398,
+                  -0.9224,
+                  -0.6575,
+                  1.1076
+                ],
+                "values": [
+                  "[-0.658  1.108 -0.922 -1.24 ]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_013",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_013']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.0665,
+                "max": 0.945,
+                "mean": -0.6446,
+                "std": 1.0681,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.0665,
+                  -0.7375,
+                  -0.7192,
+                  0.945
+                ],
+                "values": [
+                  "[-0.738  0.945 -2.067 -0.719]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_014",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_014']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.3206,
+                "max": 3.1164,
+                "mean": 1.4666,
+                "std": 1.2919,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.3206,
+                  0.9227,
+                  2.1481,
+                  3.1164
+                ],
+                "values": [
+                  "[-0.321  0.923  3.116  2.148]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_015",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_015']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.0572,
+                "max": 1.8441,
+                "mean": -0.0397,
+                "std": 1.3809,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.0572,
+                  0.0153,
+                  0.0391,
+                  1.8441
+                ],
+                "values": [
+                  "[-2.057  0.015  0.039  1.844]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_016",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_016']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.2686,
+                "max": 0.3138,
+                "mean": -0.0177,
+                "std": 0.213,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.2686,
+                  -0.11,
+                  -0.0058,
+                  0.3138
+                ],
+                "values": [
+                  "[ 0.314 -0.11  -0.006 -0.269]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_017",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_017']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.3254,
+                "max": 1.3815,
+                "mean": 0.5938,
+                "std": 0.6582,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.3254,
+                  0.2999,
+                  1.0193,
+                  1.3815
+                ],
+                "values": [
+                  "[-0.325  0.3    1.019  1.381]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_018",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_018']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.7171,
+                "max": 1.0941,
+                "mean": -0.1293,
+                "std": 0.7189,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.7171,
+                  -0.5545,
+                  -0.3396,
+                  1.0941
+                ],
+                "values": [
+                  "[-0.34  -0.717 -0.555  1.094]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_019",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_019']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.0789,
+                "max": 0.7968,
+                "mean": -0.3983,
+                "std": 1.2017,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.0789,
+                  -0.9938,
+                  0.6828,
+                  0.7968
+                ],
+                "values": [
+                  "[-0.994  0.797 -2.079  0.683]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_020",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_020']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": 0.4596,
+                "max": 1.2546,
+                "mean": 0.745,
+                "std": 0.3058,
+                "n_unique": 4,
+                "unique_values": [
+                  0.4596,
+                  0.5708,
+                  0.6948,
+                  1.2546
+                ],
+                "values": [
+                  "[0.571 0.46  0.695 1.255]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_021",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_021']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.3762,
+                "max": 1.2862,
+                "mean": -0.5336,
+                "std": 1.4881,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.3762,
+                  -1.559,
+                  0.5147,
+                  1.2862
+                ],
+                "values": [
+                  "[-2.376 -1.559  1.286  0.515]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_022",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_022']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.8339,
+                "max": 0.8792,
+                "mean": -0.3238,
+                "std": 0.6978,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.8339,
+                  -0.683,
+                  -0.6577,
+                  0.8792
+                ],
+                "values": [
+                  "[-0.658 -0.683 -0.834  0.879]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_023",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_023']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.4042,
+                "max": 0.4008,
+                "mean": -0.2046,
+                "std": 0.7073,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.4042,
+                  -0.0049,
+                  0.1898,
+                  0.4008
+                ],
+                "values": [
+                  "[ 0.401 -0.005 -1.404  0.19 ]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_024",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_024']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.8826,
+                "max": 0.8006,
+                "mean": 0.2494,
+                "std": 0.6623,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.8826,
+                  0.5229,
+                  0.5568,
+                  0.8006
+                ],
+                "values": [
+                  "[-0.883  0.557  0.801  0.523]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_025",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_025']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.1328,
+                "max": 0.5344,
+                "mean": -0.2384,
+                "std": 0.6193,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.1328,
+                  -0.4321,
+                  0.0768,
+                  0.5344
+                ],
+                "values": [
+                  "[-0.432 -1.133  0.534  0.077]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_026",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_026']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.872,
+                "max": 0.544,
+                "mean": -0.194,
+                "std": 0.5195,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.872,
+                  -0.4155,
+                  -0.0326,
+                  0.544
+                ],
+                "values": [
+                  "[-0.872  0.544 -0.033 -0.416]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_027",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_027']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.7612,
+                "max": 0.3128,
+                "mean": -0.1652,
+                "std": 0.4191,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.7612,
+                  -0.3429,
+                  0.1306,
+                  0.3128
+                ],
+                "values": [
+                  "[ 0.313 -0.761 -0.343  0.131]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_028",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_028']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.3541,
+                "max": 0.864,
+                "mean": 0.0797,
+                "std": 0.4652,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.3541,
+                  -0.1175,
+                  -0.0735,
+                  0.864
+                ],
+                "values": [
+                  "[-0.074  0.864 -0.118 -0.354]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_029",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_029']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.9362,
+                "max": 1.7857,
+                "mean": 0.5171,
+                "std": 0.994,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.9362,
+                  0.2828,
+                  0.9361,
+                  1.7857
+                ],
+                "values": [
+                  "[ 0.936  0.283  1.786 -0.936]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_030",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_030']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.5977,
+                "max": 1.8217,
+                "mean": 0.0618,
+                "std": 1.6301,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.5977,
+                  0.3485,
+                  0.6748,
+                  1.8217
+                ],
+                "values": [
+                  "[ 0.675  0.348 -2.598  1.822]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_031",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_031']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.6944,
+                "max": 1.636,
+                "mean": 0.4548,
+                "std": 0.8988,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.6944,
+                  -0.0687,
+                  0.9464,
+                  1.636
+                ],
+                "values": [
+                  "[ 0.946 -0.069 -0.694  1.636]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_032",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_032']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.4104,
+                "max": 0.4598,
+                "mean": -0.655,
+                "std": 0.7409,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.4104,
+                  -1.2333,
+                  -0.436,
+                  0.4598
+                ],
+                "values": [
+                  "[ 0.46  -1.233 -1.41  -0.436]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_033",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_033']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.301,
+                "max": 0.698,
+                "mean": -0.0861,
+                "std": 0.8199,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.301,
+                  -0.3734,
+                  0.6319,
+                  0.698
+                ],
+                "values": [
+                  "[-0.373  0.632  0.698 -1.301]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_034",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_034']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.0314,
+                "max": 2.4057,
+                "mean": 1.4198,
+                "std": 0.9299,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.0314,
+                  1.2835,
+                  2.0215,
+                  2.4057
+                ],
+                "values": [
+                  "[ 2.022  2.406 -0.031  1.283]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_035",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_035']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.4926,
+                "max": 1.5816,
+                "mean": -0.4612,
+                "std": 1.2,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.4926,
+                  -1.0422,
+                  -0.8915,
+                  1.5816
+                ],
+                "values": [
+                  "[-1.042 -1.493  1.582 -0.892]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_036",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_036']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.285,
+                "max": 0.8829,
+                "mean": -0.4045,
+                "std": 0.7934,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.285,
+                  -0.6427,
+                  -0.5731,
+                  0.8829
+                ],
+                "values": [
+                  "[-0.573 -1.285  0.883 -0.643]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_037",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_037']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.526,
+                "max": 1.3641,
+                "mean": 0.5314,
+                "std": 0.6839,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.526,
+                  0.5133,
+                  0.7744,
+                  1.3641
+                ],
+                "values": [
+                  "[ 0.513  1.364  0.774 -0.526]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_038",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_038']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.403,
+                "max": 1.5948,
+                "mean": 0.3015,
+                "std": 0.7774,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.403,
+                  -0.1866,
+                  0.2008,
+                  1.5948
+                ],
+                "values": [
+                  "[ 1.595  0.201 -0.187 -0.403]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_039",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_039']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.8616,
+                "max": 0.9474,
+                "mean": -0.0374,
+                "std": 0.6857,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.8616,
+                  -0.4484,
+                  0.2131,
+                  0.9474
+                ],
+                "values": [
+                  "[ 0.213 -0.448  0.947 -0.862]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_040",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_040']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.2961,
+                "max": 0.3717,
+                "mean": -0.6405,
+                "std": 0.6561,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.2961,
+                  -1.138,
+                  -0.4997,
+                  0.3717
+                ],
+                "values": [
+                  "[-1.296 -0.5    0.372 -1.138]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_041",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_041']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.0391,
+                "max": 0.5019,
+                "mean": -0.4937,
+                "std": 0.5955,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.0391,
+                  -0.8383,
+                  -0.5994,
+                  0.5019
+                ],
+                "values": [
+                  "[-1.039 -0.599 -0.838  0.502]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_042",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_042']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.6285,
+                "max": 1.0893,
+                "mean": 0.2986,
+                "std": 0.6262,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.6285,
+                  0.1736,
+                  0.5598,
+                  1.0893
+                ],
+                "values": [
+                  "[ 0.56   1.089 -0.629  0.174]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_043",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_043']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.5812,
+                "max": 0.9777,
+                "mean": 0.1347,
+                "std": 0.6138,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.5812,
+                  -0.2999,
+                  0.4424,
+                  0.9777
+                ],
+                "values": [
+                  "[ 0.978 -0.581  0.442 -0.3  ]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_044",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_044']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.7901,
+                "max": 1.1228,
+                "mean": 0.1732,
+                "std": 0.8871,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.7901,
+                  -0.6318,
+                  0.9918,
+                  1.1228
+                ],
+                "values": [
+                  "[ 1.123 -0.79   0.992 -0.632]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_045",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_045']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.0385,
+                "max": 0.7905,
+                "mean": 0.5572,
+                "std": 0.3459,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.0385,
+                  0.6954,
+                  0.7816,
+                  0.7905
+                ],
+                "values": [
+                  "[ 0.695 -0.038  0.791  0.782]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_046",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_046']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.2243,
+                "max": 1.0525,
+                "mean": 0.5367,
+                "std": 0.4993,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.2243,
+                  0.4123,
+                  0.9062,
+                  1.0525
+                ],
+                "values": [
+                  "[-0.224  0.412  1.053  0.906]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_047",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_047']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.003,
+                "max": 0.3839,
+                "mean": -0.4566,
+                "std": 0.5421,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.003,
+                  -0.8559,
+                  -0.3513,
+                  0.3839
+                ],
+                "values": [
+                  "[ 0.384 -0.351 -1.003 -0.856]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_048",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_048']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": 0.2759,
+                "max": 1.1661,
+                "mean": 0.6313,
+                "std": 0.3312,
+                "n_unique": 4,
+                "unique_values": [
+                  0.2759,
+                  0.4697,
+                  0.6136,
+                  1.1661
+                ],
+                "values": [
+                  "[0.47  0.276 1.166 0.614]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_049",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_049']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.7005,
+                "max": 2.102,
+                "mean": 0.0061,
+                "std": 1.4536,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.7005,
+                  -0.9202,
+                  0.5431,
+                  2.102
+                ],
+                "values": [
+                  "[-1.701  0.543 -0.92   2.102]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_050",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_050']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.2895,
+                "max": 1.0007,
+                "mean": -0.2721,
+                "std": 0.9165,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.2895,
+                  -0.9795,
+                  0.1799,
+                  1.0007
+                ],
+                "values": [
+                  "[ 1.001  0.18  -0.98  -1.29 ]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_051",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_051']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.688,
+                "max": 0.2562,
+                "mean": -0.3091,
+                "std": 0.3469,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.688,
+                  -0.4211,
+                  -0.3836,
+                  0.2562
+                ],
+                "values": [
+                  "[ 0.256 -0.421 -0.688 -0.384]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_052",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_052']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.4175,
+                "max": 0.7124,
+                "mean": -0.5014,
+                "std": 1.2603,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.4175,
+                  -0.8439,
+                  0.5432,
+                  0.7124
+                ],
+                "values": [
+                  "[ 0.543 -2.418 -0.844  0.712]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_053",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_053']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.3329,
+                "max": 0.6197,
+                "mean": -0.2538,
+                "std": 0.7914,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.3329,
+                  -0.6785,
+                  0.3766,
+                  0.6197
+                ],
+                "values": [
+                  "[ 0.377 -1.333 -0.678  0.62 ]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_054",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_054']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -2.4176,
+                "max": 0.6325,
+                "mean": -0.845,
+                "std": 1.232,
+                "n_unique": 4,
+                "unique_values": [
+                  -2.4176,
+                  -1.6376,
+                  0.0425,
+                  0.6325
+                ],
+                "values": [
+                  "[ 0.632 -1.638  0.042 -2.418]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_055",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_055']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.119,
+                "max": -0.0196,
+                "mean": -0.7059,
+                "std": 0.4169,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.119,
+                  -0.9325,
+                  -0.7525,
+                  -0.0196
+                ],
+                "values": [
+                  "[-0.02  -1.119 -0.933 -0.752]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_056",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_056']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.2912,
+                "max": 0.3279,
+                "mean": -0.5805,
+                "std": 0.585,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.2912,
+                  -0.7771,
+                  -0.5815,
+                  0.3279
+                ],
+                "values": [
+                  "[ 0.328 -0.777 -1.291 -0.582]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_057",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_057']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -1.62,
+                "max": 2.5543,
+                "mean": 0.2542,
+                "std": 1.5057,
+                "n_unique": 4,
+                "unique_values": [
+                  -1.62,
+                  -0.2543,
+                  0.3366,
+                  2.5543
+                ],
+                "values": [
+                  "[ 0.337 -0.254 -1.62   2.554]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_058",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_058']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.3254,
+                "max": 0.4819,
+                "mean": 0.1931,
+                "std": 0.309,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.3254,
+                  0.2678,
+                  0.3483,
+                  0.4819
+                ],
+                "values": [
+                  "[-0.325  0.348  0.482  0.268]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "key_059",
+              "kind": "array",
+              "detail": "(4,)  float64",
+              "acc": "['key_059']",
+              "stats": {
+                "shape": [
+                  4
+                ],
+                "dtype": "float64",
+                "size": 4,
+                "nbytes": 32,
+                "ndim": 1,
+                "min": -0.9739,
+                "max": 1.2578,
+                "mean": 0.1125,
+                "std": 0.8407,
+                "n_unique": 4,
+                "unique_values": [
+                  -0.9739,
+                  -0.3252,
+                  0.4914,
+                  1.2578
+                ],
+                "values": [
+                  "[ 1.258 -0.325  0.491 -0.974]"
+                ]
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            },
+            {
+              "name": "ts",
+              "kind": "array",
+              "detail": "(100000,)  float64",
+              "acc": "['ts']",
+              "stats": {
+                "shape": [
+                  100000
+                ],
+                "dtype": "float64",
+                "size": 100000,
+                "nbytes": 800000,
+                "ndim": 1,
+                "min": -4.4102,
+                "max": 4.2673,
+                "mean": -0.0014,
+                "std": 1.0014,
+                "n_unique": 100000
+              },
+              "children": [],
+              "_agg": {
+                "files": 0,
+                "arrays": 1,
+                "scalars": 0,
+                "bytes": 0,
+                "label_hints": [],
+                "errors": []
+              }
+            }
+          ],
+          "_agg": {
+            "files": 1,
+            "arrays": 61,
+            "scalars": 0,
+            "bytes": 816938,
+            "label_hints": [],
+            "errors": []
+          }
+        }
+      ],
+      "_agg": {
+        "files": 1,
+        "arrays": 61,
+        "scalars": 0,
+        "bytes": 816938,
+        "label_hints": [],
+        "errors": []
+      }
+    }
+  ],
+  "_agg": {
+    "files": 3,
+    "arrays": 73,
+    "scalars": 0,
+    "bytes": 1062730,
+    "label_hints": [
+      "labels  —  疑似类别标签（7 类）",
+      "valid_mask  —  布尔掩码",
+      "bad_frames  —  疑似类别标签（5 类）"
+    ],
+    "errors": [
+      "broken.npy"
+    ]
+  }
+}

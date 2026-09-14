@@ -1,0 +1,15 @@
+# Normalise text to LF in the repo regardless of the committer's platform, so a
+# Windows checkout and a Linux checkout produce the same bytes. Matters here:
+# the HTML template is built by Python string replacement, and a stray CRLF in a
+# multi-line match silently fails to match.
+* text=auto eol=lf
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+
+# Never let Git touch these -- it corrupts them
+*.docx binary
+*.png  binary
+*.npy  binary
+*.npz  binary
