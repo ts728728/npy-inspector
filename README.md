@@ -8,7 +8,10 @@ README: the tool has to discover the organization itself. It recurses into npz
 keys, object arrays, and nested dicts/lists, so you can see what each array
 holds, its shape/dtype/range, and which arrays look like labels.
 
-![npy-inspector showing a structure map, with a node selected and its Jupyter index code shown above](examples/screenshot.png)
+<!-- Absolute jsDelivr URL, not a relative path, on purpose: GitHub rewrites a
+     relative image path to raw.githubusercontent.com, which is unreachable from
+     mainland China, so the screenshot renders as a broken image there. -->
+![npy-inspector showing a structure map, with a node selected and its Jupyter index code shown above](https://gcore.jsdelivr.net/gh/ts728728/npy-inspector@main/examples/screenshot.png)
 
 <sub>Interactive map. Click any box and the 参考索引 bar above it gives the
 copy-pasteable Jupyter code that reaches that level.</sub>
@@ -223,7 +226,7 @@ MIT — see [LICENSE](LICENSE).
 npz 里的键、object 数组、嵌套的 dict/list，它都一层层钻进去，告诉你每个数组装了什么、
 多大、什么类型、数值范围多少，以及哪几个看着像标签。
 
-![结构图示例](examples/screenshot.png)
+![结构图示例](https://gcore.jsdelivr.net/gh/ts728728/npy-inspector@main/examples/screenshot.png)
 
 ## 为什么要用它
 
