@@ -23,11 +23,25 @@ import math
 import os
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import numpy as np
 
 STAT_SAMPLE = 100_000          # max elements used for min/max/unique stats
+
+# Loading a member costs RAM proportional to its size; a .npy does not, because
+# it is memory-mapped and only the sampled pages are ever faulted in. So the cap
+# only has to apply to npz members. 256 MB keeps peak RSS flat on a machine with
+# a few GB of RAM while leaving ordinary session arrays fully summarised.
+MAX_ARRAY_MB = 256
+# Set by render_png once it knows whether a CJK font resolved. Module level
+# because the label helpers need it and are not all called from one place.
+HAVE_CJK = True
+# An object array holds Python pointers, not values, so its .nbytes says almost
+# nothing about what loading it costs -- 8 bytes per element on paper, hundreds
+# in practice. Estimate instead of trusting nbytes.
+OBJECT_BYTES_EST = 512
 UNIQUE_CAP = 200_000           # skip np.unique above this many sampled elements
 LABEL_MAX_CLASSES = 50         # unique-count ceiling for the "label-ish" hint
 
@@ -172,6 +186,86 @@ def _trunc_node(n_hidden: int) -> dict:
             "detail": "超出 --max-items，已省略", "children": []}
 
 
+def _read_npy_header(fp):
+    """Shape and dtype from an open .npy stream, reading only the header.
+
+    A .npy begins with a small header giving the shape and dtype, and only then
+    the data. Reading those first ~128 bytes costs O(1) memory no matter how
+    large the array is, which is what lets a huge array still be mapped out in
+    full detail -- just without min/max/unique. Returns (shape, dtype) or None.
+    """
+    try:
+        version = np.lib.format.read_magic(fp)
+        if version == (1, 0):
+            shape, _fortran, dtype = np.lib.format.read_array_header_1_0(fp)
+        else:                           # 2.0 and 3.0 share the 4-byte length
+            shape, _fortran, dtype = np.lib.format.read_array_header_2_0(fp)
+        return tuple(int(x) for x in shape), np.dtype(dtype)
+    except Exception:
+        return None
+
+
+def _npy_meta(path: Path):
+    """Same, for a real .npy file on disk."""
+    try:
+        with open(path, "rb") as fp:
+            return _read_npy_header(fp)
+    except OSError:
+        return None
+
+
+def _npz_member_meta(zf: zipfile.ZipFile, name: str):
+    """Same, for a member read through the zip stream."""
+    try:
+        with zf.open(name) as fp:
+            return _read_npy_header(fp)
+    except Exception:
+        return None
+
+
+def _load_cost(shape, dtype) -> int:
+    """Rough in-memory bytes needed to materialise an array of this shape."""
+    n = 1
+    for d in shape:
+        n *= max(int(d), 1)
+    if shape and 0 in shape:
+        n = 0
+    unit = dtype.itemsize
+    if dtype.kind == "O":
+        unit = OBJECT_BYTES_EST
+    return n * unit
+
+
+def _skipped_array(name: str, shape, dtype, acc: str, cap_mb: float) -> dict:
+    """A node for an array we deliberately did not load.
+
+    Everything the map needs -- where it sits, how big it is, what type -- comes
+    from the header. Only the value statistics are missing, and those are the
+    part that would have cost the RAM.
+    """
+    n = 1
+    for d in shape:
+        n *= max(int(d), 1)
+    if shape and 0 in shape:
+        n = 0
+    return {
+        # The dashed/amber object_array styling is a statement about the dtype,
+        # and the dtype comes from the header -- it stays accurate even though we
+        # never looked inside. Leaving it plain would understate what this is:
+        # an object array is exactly the node a reader is scanning for.
+        "name": name, "kind": "object_array" if dtype.kind == "O" else "array",
+        "acc": acc,
+        "detail": f"{tuple(shape)}  {dtype}",
+        "stats": {
+            "shape": [int(x) for x in shape], "dtype": str(dtype),
+            "size": n, "nbytes": n * dtype.itemsize, "ndim": len(shape),
+            "unsampled": f"约 {_human(_load_cost(shape, dtype))}，"
+                         f"超过 {cap_mb:g}MB 上限未加载",
+        },
+        "children": [],
+    }
+
+
 def walk_array(a: np.ndarray, name: str, args, depth: int, acc: str = "") -> dict:
     """`acc` is the Python subscript that reaches this node from its parent's
     variable -- "" means the node *is* the parent's value (a .npy file holds its
@@ -251,29 +345,91 @@ def scan_file(path: Path, args) -> dict:
             "path": str(path), "npz": path.suffix == ".npz", "children": []}
 
     if path.suffix == ".npz":
+        # Read the zip directory first. Every member's shape and dtype is
+        # available from its own .npy header, so the decision to load or skip can
+        # be made before a single byte of array data is decompressed.
+        headers: dict[str, tuple] = {}
         try:
-            try:
-                z = np.load(path, allow_pickle=args.allow_pickle, mmap_mode="r")
-            except Exception:
-                z = np.load(path, allow_pickle=args.allow_pickle)
+            with zipfile.ZipFile(path) as zf:
+                members = [n for n in zf.namelist() if n.endswith(".npy")]
+                for m in members:
+                    meta = _npz_member_meta(zf, m)
+                    if meta is not None:
+                        headers[m] = meta
         except Exception as e:
             node["detail"] += f"   打开失败: {type(e).__name__}"
             node["error"] = f"{type(e).__name__}: {e}"
             node["kind"] = "error"
             return node
-        node["detail"] += f"   · npz · {len(z.files)} 个键"
-        for k in z.files:
+
+        if not headers:
+            node["detail"] += "   · npz · 0 个键"
+            return node
+
+        cap = args.max_array_mb * 1024 * 1024
+        keys = [m[:-4] for m in headers]
+        skipped = [k for k in keys
+                   if _load_cost(*headers[k + ".npy"]) > cap]
+        # Only the members that survive the cap need a real NpzFile.
+        z = None
+        if len(skipped) < len(keys):
+            try:
+                try:
+                    z = np.load(path, allow_pickle=args.allow_pickle,
+                                mmap_mode="r")
+                except Exception:
+                    z = np.load(path, allow_pickle=args.allow_pickle)
+            except Exception as e:
+                node["detail"] += f"   打开失败: {type(e).__name__}"
+                node["error"] = f"{type(e).__name__}: {e}"
+                node["kind"] = "error"
+                return node
+
+        node["detail"] += f"   · npz · {len(keys)} 个键"
+        if skipped:
+            node["detail"] += f" · {len(skipped)} 个未加载"
+        for k in keys:
+            want = k + ".npy"
+            shape, dtype = headers[want]
+            if _load_cost(shape, dtype) > cap:
+                node["children"].append(
+                    _skipped_array(k, shape, dtype, f"[{k!r}]", args.max_array_mb))
+                continue
             try:
                 node["children"].append(walk_value(z[k], k, args, 1, f"[{k!r}]"))
             except Exception as e:
                 node["children"].append({
                     "name": k, "kind": "error", "acc": f"[{k!r}]",
                     "detail": f"读取失败: {type(e).__name__}: {e}", "children": []})
-        try:
-            z.close()
-        except Exception:
-            pass
+        if z is not None:
+            try:
+                z.close()
+            except Exception:
+                pass
     else:
+        # A numeric .npy is memory-mapped, so its cost is bounded by the sample
+        # and not by the file: measured at 422 MB peak for 800 MB, 1.12 GB and
+        # 6.5 GB alike. It never needs the cap.
+        #
+        # Object arrays are the exception, and the exception is total: mmap
+        # refuses them outright ("Array can't be memory-mapped: Python objects in
+        # dtype"), so the fallback below runs and that path has no ceiling at
+        # all. Measured at ~3.7x the file size resident -- a 3.2 MB object .npy
+        # costs 42 MB, a 30 MB one costs 140 MB. Since object arrays are exactly
+        # what this tool exists to look inside, silently declining to open one is
+        # bad; silently opening a 2 GB one on an 8 GB machine is worse. So the
+        # same cap applies, and the node says why it was skipped.
+        meta = _npy_meta(path) if path.suffix == ".npy" else None
+        cap = args.max_array_mb * 1024 * 1024
+        if meta and meta[1].kind == "O" and _load_cost(*meta) > cap:
+            skipped = _skipped_array(path.stem, meta[0], meta[1], "",
+                                     args.max_array_mb)
+            skipped["stats"]["unsampled"] = (
+                f"{skipped['stats']['unsampled']}"
+                f"（object 数组无法 mmap，只能整块读进内存）")
+            node["detail"] += " · 1 个未加载"
+            node["children"].append(skipped)
+            return node
         try:
             try:
                 a = np.load(path, allow_pickle=args.allow_pickle, mmap_mode="r")
@@ -304,9 +460,14 @@ def build_tree(root: Path, args) -> dict:
             for fn in sorted(filenames):
                 if Path(fn).suffix in (".npy", ".npz"):
                     files.append(Path(dirpath) / fn)
-            if len(files) >= args.max_files:
-                break
+            # No early break: counting how many files there are costs one
+            # directory walk, and without the true total the truncation warning
+            # could only ever say "400 of at least 400", which is no warning.
+    found = len(files)
     files = sorted(files)[: args.max_files]
+    # A silent cap is worse than no cap: on a large dataset you would get a map
+    # of the first N files alphabetically and no way to tell it was partial.
+    truncated = found - len(files)
 
     # Full paths blow up the root box and carry no information -- the user
     # already knows where their dataset lives. Last two components is enough
@@ -343,14 +504,19 @@ def build_tree(root: Path, args) -> dict:
     detail = f"{st['files']} 个数组文件"
     if st["errors"]:
         detail += f" · {len(st['errors'])} 个读取失败"
+    if truncated:
+        detail += f" · 另有 {truncated} 个未扫描"
     tree["detail"] = f"{detail} @ {where}"
+    if truncated:
+        tree["_agg"]["truncated"] = truncated
+        tree["_agg"]["files_found"] = found
     return tree
 
 
 def _tag_stats(node: dict) -> dict:
     """Bottom-up: attach aggregate counters used by the HTML header."""
     agg = {"files": 0, "arrays": 0, "scalars": 0, "bytes": 0,
-           "label_hints": [], "errors": []}
+           "unsampled": 0, "label_hints": [], "errors": []}
     if node.get("kind") == "file":
         agg["files"] = 1
         try:
@@ -362,14 +528,18 @@ def _tag_stats(node: dict) -> dict:
     st = node.get("stats")
     if st:
         agg["arrays"] = 1
+        if st.get("unsampled"):
+            agg["unsampled"] = 1
         hint = st.get("label_hint")
         if hint:
             path_name = node.get("name")
             agg["label_hints"].append(f"{path_name}  —  {hint}")
     for c in node.get("children", []):
         sub = _tag_stats(c)
-        for k in ("files", "arrays", "scalars", "bytes"):
-            agg[k] += sub[k]
+        # .get, because a child that found nothing unloaded has already dropped
+        # the key at the end of its own call.
+        for k in ("files", "arrays", "scalars", "bytes", "unsampled"):
+            agg[k] += sub.get(k, 0)
         agg["label_hints"] += sub["label_hints"]
         agg["errors"] += sub["errors"]
     # collapse repeats of the same array name (a per-session object array yields
@@ -383,6 +553,12 @@ def _tag_stats(node: dict) -> dict:
         seen.add(nm)
         dedup.append(h)
     agg["label_hints"] = dedup[:40]
+    # The counter is needed while recursing, but a zero on every one of 90 nodes
+    # is noise in the JSON schema -- and it reads as if the field were always
+    # meaningful. Emit it only when there is something to report, the same way
+    # _agg["truncated"] is only set by build_tree when it is non-zero.
+    if not agg["unsampled"]:
+        del agg["unsampled"]
     node["_agg"] = agg
     return agg
 
@@ -440,6 +616,10 @@ def _segments(n: dict):
         segs.append((_fmt_shape(st["shape"]), "shape"))
     if st.get("dtype"):
         segs.append((str(st["dtype"]), "dtype"))
+    # An unloaded array is otherwise indistinguishable from an examined one --
+    # the PNG never showed value statistics, so its absence is not a signal.
+    if st.get("unsampled"):
+        segs.append(("未加载" if HAVE_CJK else "not loaded", "plain"))
     if not segs and n.get("detail"):
         segs.append((n["detail"], "plain"))
     if n.get("hint"):
@@ -566,6 +746,11 @@ def render_png(root: dict, out: Path, max_label: int = 56,
         "detail": (7.2, "normal"),
         "toggle": (9.0, "bold"),
     })
+    # _segments() needs to know whether CJK glyphs are drawable, and it is
+    # called from here, so publish the answer rather than passing it down
+    # through every label helper.
+    global HAVE_CJK
+    HAVE_CJK = have_cjk
     name_font, det_font = props["name"], props["detail"]
     title_font, tog_font = props["title"], props["toggle"]
 
@@ -697,6 +882,12 @@ def render_png(root: dict, out: Path, max_label: int = 56,
     if not have_cjk:
         sub = (f"{agg.get('files', 0)} files / {agg.get('arrays', 0)} arrays / "
                f"{_human(agg.get('bytes', 0))}")
+    if agg.get("unsampled"):
+        sub += f" · {agg['unsampled']} 个未加载" if have_cjk else \
+               f" / {agg['unsampled']} unloaded"
+    if agg.get("truncated"):
+        sub += f" · 另有 {agg['truncated']} 个文件未扫描" if have_cjk else \
+               f" / {agg['truncated']} files unscanned"
     ax.text(ml + w_in(root["name"], title_font) + 0.22, 0.30, sub,
             fontproperties=det_font, color=MUTED, va="center_baseline",
             ha="left", zorder=4)
@@ -1061,6 +1252,10 @@ function segsOf(n){
   const out = [];
   if(st.shape) out.push([fmtShape(st.shape), 'shape']);
   if(st.dtype) out.push([String(st.dtype), 'dtype']);
+  // Mirrors _segments on the PNG side: an array that was never loaded must not
+  // look like one that was. The map box shows no value statistics either way,
+  // so their absence is not a signal the reader can use.
+  if(st.unsampled) out.push(['未加载', 'plain']);
   if(!out.length && n.detail) out.push([n.detail, 'plain']);
   if(n.hint) out.push([n.hint, 'hint']);
   return out;
@@ -1543,6 +1738,9 @@ function fmtNum(v){
 function statsText(n){
   const s = n.stats; if(!s) return '';
   if(s.empty) return '空数组';
+  // Deliberately not loaded (over --max-array-mb). Say so rather than falling
+  // through to an empty string, which would read as "this array has no values".
+  if(s.unsampled) return s.unsampled;
   const bits = [];
   if(s.dtype !== 'bool' && !n.hint && s.min !== undefined)
     bits.push('min=' + fmtNum(s.min), 'max=' + fmtNum(s.max),
@@ -1701,6 +1899,14 @@ def render_html(root: dict, out: Path) -> None:
         f"<span><b>{agg.get('arrays', 0)}</b> 个数组</span>",
         f"<span><b>{_human(agg.get('bytes', 0))}</b> 总大小</span>",
     ]
+    if agg.get("unsampled"):
+        stats.append(f"<span title='超过 --max-array-mb，只读了头部，"
+                     f"没有取值范围和唯一值'>"
+                     f"<b>{agg['unsampled']}</b> 个大数组未加载</span>")
+    if agg.get("truncated"):
+        stats.append(f"<span style='color:#b45309' title='这张图是残缺的，"
+                     f"要全扫请调大 --max-files'>"
+                     f"<b>{agg['truncated']}</b> 个文件未扫描</span>")
     if agg.get("errors"):
         stats.append(f"<span style='color:#b91c1c'><b>{len(agg['errors'])}</b> 个文件读取失败</span>")
 
@@ -1737,6 +1943,15 @@ def main(argv=None) -> int:
                     help="max children expanded per node (default 25)")
     ap.add_argument("--max-files", type=int, default=400,
                     help="max files scanned (default 400)")
+    ap.add_argument("--max-array-mb", type=float, default=MAX_ARRAY_MB,
+                    metavar="MB",
+                    help=f"arrays larger than this are mapped from their .npy "
+                         f"header but never loaded, so shape/dtype/size stay "
+                         f"exact and only the value statistics are skipped "
+                         f"(default {MAX_ARRAY_MB}). Applies to npz members and "
+                         f"to object-dtype .npy files, which cannot be "
+                         f"memory-mapped; numeric .npy files are memory-mapped "
+                         f"and are not affected")
     ap.add_argument("--no-pickle", dest="allow_pickle", action="store_false",
                     help="refuse object arrays (safer, but skips nested structures)")
     ap.add_argument("--formats", default="html,png,json",
@@ -1791,6 +2006,13 @@ def main(argv=None) -> int:
         print("疑似标签数组:")
         for h in agg["label_hints"][:15]:
             print(f"  - {h}")
+    if agg.get("truncated"):
+        print(f"注意: 只扫描了 {agg['files']} / 共 {agg['files_found']} 个文件，"
+              f"还有 {agg['truncated']} 个没扫 —— 这张图是残缺的，"
+              f"要全扫请加 --max-files {agg['files_found']}")
+    if agg.get("unsampled"):
+        print(f"另有 {agg['unsampled']} 个大数组只读了头部（未加载数据），"
+              f"没有取值范围和唯一值")
     if agg.get("errors"):
         print(f"读取失败 {len(agg['errors'])} 个: {', '.join(agg['errors'][:5])}")
     for p in made:

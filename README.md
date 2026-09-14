@@ -63,7 +63,8 @@ piped or redirected and it stays quiet, so it drops into a script cleanly.
 | `--out DIR` | Write elsewhere (e.g. your Desktop). |
 | `--max-depth N` | Recursion ceiling into object arrays / dicts (default 6). Raise for deeply nested session structs. |
 | `--max-items N` | Children expanded per node (default 25). Raise if a dict has 60 keys and you need them all. |
-| `--max-files N` | Cap on files scanned (default 400). |
+| `--max-files N` | Cap on files scanned (default 400). Never silent — see *Large datasets* below. |
+| `--max-array-mb MB` | Arrays larger than this are mapped from their `.npy` header but never loaded (default 256). |
 | `--no-pickle` | Refuse object arrays. **Safer, but nested structures go unexpanded** — only use on untrusted data. |
 | `--formats html,png,json` | Which artifacts to produce. Drop the PNG when you don't need a document-ready image. |
 | `--collapse N` | PNG only: merge runs of ≥N identically-shaped leaf siblings into one row (default 8, `0` disables). |
@@ -118,6 +119,51 @@ type in a Jupyter cell to reach that exact level, plus a 复制代码 button. Th
 last line is marked `← 目标`. It exists to remove the step where you see an
 array name in the diagram and then have to go write `np.load(...)['...']` by
 hand.
+
+## Large datasets
+
+A 400 GB folder costs about the same as a 1 GB one, **provided it is numeric
+`.npy`**. Measured here on a 7.8 GB machine:
+
+| Input | Peak RSS |
+|---|---|
+| `.npy` 100 MB | 132 MB |
+| `.npy` 800 MB | 422 MB |
+| `.npy` 1.12 GB | **422 MB** — identical to 800 MB |
+| `.npy` 6.5 GB | **422 MB** — still identical |
+| `.npz` 100 MB | 132 MB |
+| `.npz` 800 MB | **832 MB** — tracks the member |
+
+A numeric `.npy` is memory-mapped, so only the sampled pages are ever read: the
+cost is bounded and does not grow with file size. Two things break that bound:
+
+- **`.npz` members.** `mmap_mode` does nothing for a compressed member, so
+  `z[key]` decompresses the whole array at once — one 40 GB member would ask for
+  40 GB.
+- **Object-dtype `.npy`.** `mmap_mode='r'` refuses them (`ValueError: Array can't
+  be memory-mapped: Python objects in dtype`), so they fall back to a plain
+  `np.load` with no ceiling. Measured at ~3.7× the file size resident, and worse
+  for fat objects: a 300k-element array of small dicts was 8.5 MB on disk and
+  117 MB in RAM.
+
+`--max-array-mb` (default 256) is the fix for both. Every array's shape and dtype
+live in its own `.npy` header — a few hundred bytes, through the zip stream or
+off disk — so the load-or-skip decision happens before any array data is touched.
+Object arrays are costed at a flat 512 bytes per element, since a pointer array's
+`nbytes` says almost nothing about what loading it costs, and the default still
+leaves room to expand an object array of ~500k elements — they are what the tool
+exists to look inside.
+
+A 1.12 GB npz that used to peak at ~1.15 GB now peaks at **31.9 MB**, with
+`dff (1200, 250000) float32` still mapped exactly and its small sibling
+`labels (1200,)` still fully summarised. A 7 GB `.npy` scans in under 7 seconds.
+
+Skipped arrays are labelled `未加载` / *not loaded* in the map, the list, and the
+PNG — the map shows no value statistics anywhere, so an unmarked array would be
+indistinguishable from a scanned one.
+
+`--max-files` likewise never truncates silently: it counts every file first, and
+prints the real total along with what was skipped.
 
 ## Safety
 
@@ -203,7 +249,8 @@ python scripts/inspect_npy.py <路径> [参数]
 | `--out DIR` | 输出到别处（比如桌面）。 |
 | `--max-depth N` | 向 object 数组 / dict 递归的深度上限，默认 6。嵌套很深的 session 结构可以调大。 |
 | `--max-items N` | 每个节点展开多少个子项，默认 25。某个 dict 有 60 个键、你想全看到时就调大。 |
-| `--max-files N` | 最多扫多少个文件，默认 400。 |
+| `--max-files N` | 最多扫多少个文件，默认 400。**不会静默截断**，见下面「大文件」。 |
+| `--max-array-mb MB` | 超过这个大小的数组只读 `.npy` 头部、不加载数据，默认 256。 |
 | `--no-pickle` | 拒绝 object 数组。**更安全，但嵌套结构就展不开了**——只对来源不可信的数据用。 |
 | `--formats html,png,json` | 要生成哪些产物。不需要图片时去掉 png。 |
 | `--collapse N` | 仅 PNG：把 ≥N 个形状相同的兄弟数组合并成一行，默认 8，`0` 关闭。 |
@@ -249,6 +296,45 @@ python scripts/inspect_npy.py <路径> [参数]
 选中任意方块，上方就会给出在 Jupyter 里索引到这一层的完整代码，最后一行标着
 `← 目标`，旁边有「复制代码」。它省掉的是「在导图里看到一个数组名，然后回 notebook
 里从头手写 `np.load(...)['...']`」这一步。
+
+## 大文件：内存取决于最大的 npz 成员，不是数据集有多大
+
+400GB 的文件夹和 1GB 的文件夹代价差不多——**前提是数值型的 `.npy`**。在本机
+（7.8GB 内存）实测：
+
+| 输入 | 峰值内存 |
+|---|---|
+| `.npy` 100MB | 132MB |
+| `.npy` 800MB | 422MB |
+| `.npy` 1.12GB | **422MB**——和 800MB 一模一样 |
+| `.npy` 6.5GB | **422MB**——还是一模一样 |
+| `.npz` 100MB | 132MB |
+| `.npz` 800MB | **832MB**——跟着成员大小走 |
+
+数值型 `.npy` 是 mmap 打开的，只有被抽样的页会被读进来，所以代价有上界、
+**不随文件变大**。有两种东西会打破这个上界：
+
+- **`.npz` 成员。** `mmap_mode` 对压缩成员无效，`z[key]` 会把整个数组解压进内存，
+  一个 40GB 的成员就会向你要 40GB。
+- **object 类型的 `.npy`。** `mmap_mode='r'` 直接拒绝它们
+  （`ValueError: Array can't be memory-mapped: Python objects in dtype`），
+  于是退回不带 mmap 的 `np.load`，这条路没有任何上限。实测约占文件大小的
+  **3.7 倍**，对象越胖越糟：一个装着小 dict 的 30 万元素数组，磁盘 8.5MB、
+  内存 117MB。
+
+`--max-array-mb`（默认 256）把两条路一起堵上。每个数组的形状和 dtype 都写在它自己的
+`.npy` 头部里——不管是从 zip 流里读还是从磁盘上读，都只要几百个字节——所以「加载还是
+跳过」在任何数组数据被碰之前就决定了。object 数组按**每个元素 512 字节**估算，
+因为指针数组的 `nbytes` 几乎说明不了加载它要多少内存；默认值仍然足够展开约 50 万
+元素的 object 数组——那正是这个工具存在的意义。
+
+一个 1.12GB 的 npz 从原来峰值约 1.15GB 降到 **31.9MB**，
+`dff (1200, 250000) float32` 依然被精确画出，旁边的小成员 `labels (1200,)`
+统计量完整保留；一个 7GB 的 `.npy` 扫完不到 7 秒。被跳过的数组在导图、列表、
+PNG 里都标着「未加载」——这张图本来就不显示取值统计，不标记的话它和扫过的数组
+完全分不出来。
+
+`--max-files` 同样**不会静默截断**：先数清总数再截，警告里给出真实总数和漏掉了多少。
 
 ## 安全
 

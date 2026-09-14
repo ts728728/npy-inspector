@@ -324,6 +324,10 @@ function segsOf(n){
   const out = [];
   if(st.shape) out.push([fmtShape(st.shape), 'shape']);
   if(st.dtype) out.push([String(st.dtype), 'dtype']);
+  // Mirrors _segments on the PNG side: an array that was never loaded must not
+  // look like one that was. The map box shows no value statistics either way,
+  // so their absence is not a signal the reader can use.
+  if(st.unsampled) out.push(['未加载', 'plain']);
   if(!out.length && n.detail) out.push([n.detail, 'plain']);
   if(n.hint) out.push([n.hint, 'hint']);
   return out;
@@ -806,6 +810,9 @@ function fmtNum(v){
 function statsText(n){
   const s = n.stats; if(!s) return '';
   if(s.empty) return '空数组';
+  // Deliberately not loaded (over --max-array-mb). Say so rather than falling
+  // through to an empty string, which would read as "this array has no values".
+  if(s.unsampled) return s.unsampled;
   const bits = [];
   if(s.dtype !== 'bool' && !n.hint && s.min !== undefined)
     bits.push('min=' + fmtNum(s.min), 'max=' + fmtNum(s.max),

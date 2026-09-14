@@ -46,10 +46,12 @@ Useful flags:
 | `--out DIR` | Write elsewhere (e.g. the user's Desktop). |
 | `--max-depth N` | Recursion ceiling into object arrays / dicts (default 6). Raise for deeply nested session structs. |
 | `--max-items N` | Children expanded per node (default 25). Raise if a dict has 60 keys and you need them all. |
+| `--max-files N` | Cap on files scanned (default 400). Never silent — see below. |
+| `--max-array-mb MB` | Arrays larger than this are mapped from their `.npy` header but **never loaded** (default 256). Shape/dtype/size stay exact; only the value statistics are skipped. Applies to npz members and object-dtype `.npy`; numeric `.npy` is memory-mapped and unaffected. |
 | `--no-pickle` | Refuse object arrays. **Safer, but nested structures go unexpanded** — only use on untrusted data. |
 | `--formats html,json` | Skip the PNG when you don't need a document-ready image. |
 | `--collapse N` | PNG only: merge runs of ≥N identically-shaped leaf siblings into one row (default 8, `0` disables). A file of 60 same-shaped keys otherwise eats 60 rows of diagram height and buries the real structure. The HTML/JSON always keep every node. |
-| `--open html\|png\|all\|none` | Pop the result open when done. Default `auto`: opens the HTML when stdout is a tty on Windows, does nothing when piped or redirected — so a script that captures the output stays quiet. Pass `all` to open both artifacts, `none` to suppress. Auto-open is best-effort: a failure prints a note and does not affect the exit status. |
+| `--open html\|png\|all\|none` | Pop the result open when done. Default `auto`: opens the HTML when stdout is a tty, does nothing when piped or redirected — so a script that captures the output stays quiet. Pass `all` to open both artifacts, `none` to suppress. Auto-open is best-effort: a failure prints a note and does not affect the exit status. |
 
 ## Environment notes (this machine, verified)
 
@@ -100,6 +102,69 @@ Useful flags:
   different things, so folding them would claim a sameness that isn't there.
   Toggle `同型合并` in the toolbar to see every row; the PNG has a static
   equivalent in `--collapse N`.
+
+### Huge datasets: memory follows the largest npz member, not the dataset
+
+Measured on this machine (7.8 GB RAM), and the shape of the curve is the thing
+to remember:
+
+| Input | Peak RSS |
+|---|---|
+| `.npy` 100 MB | 132 MB |
+| `.npy` 800 MB | 422 MB |
+| `.npy` 1.12 GB | **422 MB** — the same as 800 MB |
+| `.npy` 6.5 GB | **422 MB** — still the same |
+| `.npz` 100 MB | 132 MB |
+| `.npz` 800 MB | **832 MB** — tracks the member |
+
+A numeric `.npy` is opened with `mmap_mode='r'` and only sampled pages are ever
+faulted in, so its cost is **bounded and independent of file size** — a 400 GB
+folder of `.npy` costs about the same as a 1 GB one. Two things break that:
+
+- **`.npz` members.** `mmap_mode` does nothing for a compressed member, so
+  `z[key]` decompresses the whole array into RAM. One 40 GB member would try to
+  allocate 40 GB.
+- **Object-dtype `.npy`.** `mmap_mode='r'` refuses them outright —
+  `ValueError: Array can't be memory-mapped: Python objects in dtype` — so the
+  scanner falls back to a plain `np.load`, which has no ceiling. Measured at
+  roughly **3.7× the file size resident** (3.2 MB → 42 MB, 30 MB → 140 MB), and
+  worse for fat objects: a 300k-element array of small dicts was 8.5 MB on disk
+  and 117 MB in RAM.
+
+`--max-array-mb` closes both. Every array's shape and dtype are readable from its
+own `.npy` header — a few hundred bytes, whether through the zip stream or off
+disk — so the load-or-skip decision is made before any array data is touched.
+Object arrays are costed at a flat 512 bytes per element rather than by
+`itemsize`, since a pointer array's `nbytes` says almost nothing about what
+loading it costs.
+
+A 1.12 GB npz that previously peaked at ~1.15 GB now peaks at **31.9 MB**, with
+`dff (1200, 250000) float32` still mapped exactly and its small sibling
+`labels (1200,)` still fully summarised. A 7 GB `.npy` peaks at 422 MB and takes
+under 7 seconds.
+
+Object arrays are what this tool exists to look inside, so the cap has to be
+loose enough not to gut the map: the default 256 MB still expands an object
+array of ~500k elements. Raise `--max-array-mb` when the nesting is the point.
+
+Skipped arrays are reported on every surface — `未加载` in the map box and the
+PNG, the reason string in the list view, and a header chip. `stats.min/max/
+unique` are simply absent, and `stats.unsampled` says why. This matters: the map
+shows no value statistics anywhere, so their absence is not a signal a reader
+can decode on their own.
+
+### `--max-files` never truncates silently
+
+The scan counts every file first, then caps. A cap you cannot see is worse than
+no cap — on a large dataset you would get a map of the first N files
+alphabetically and no way to know it was partial. So truncation prints a stdout
+warning with the real total, adds a header chip, and records
+`_agg.truncated` / `_agg.files_found` in the JSON:
+
+```
+注意: 只扫描了 10 / 共 37 个文件，还有 27 个没扫 —— 这张图是残缺的，
+要全扫请加 --max-files 37
+```
 
 ### Layout: the diagram is the page
 
