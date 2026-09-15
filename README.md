@@ -151,17 +151,22 @@ collapsible **字段关系** row above the map exists to close it:
 | `348 ×24  ntrials  Trial_start_time  SoundTime …` | 24 sibling arrays share a leading dimension of 348, and a sibling scalar `ntrials` says what that axis is. The anchor is a button too — clicking it selects the scalar. |
 | `= arange(348)  trInd` | `trInd` runs 0…347, each value once: it is the row id *of* the 348-axis, not a pointer into some other family. |
 | `→ 348  ntrials  LickTrind` | Every value of `LickTrind` lands in `[0, 348)` and spans it: a per-lick → per-trial join. A `nan` note on the row means part of the array is padding. |
-| `各容器: 348 / 453 / 485` | The same layout recurs at different sizes. The row prints one instance; the other values are listed rather than dropped, because this entry describes 195 containers, not one. |
+| `各容器: 348 / 453 / 485` | The same layout recurs at different sizes. The row lists the axis lengths actually seen (up to six, then `…`), rather than print one and let it pass for the only one. How many containers share the whole layout is the header's job — `同型容器 ×56`. |
 
 Indexes and row ids also get a badge **on the box**, so the link is visible in
 the map without opening the panel. Families deliberately do **not** get a badge
 — 24 members carrying the same label would tile the map with it. Membership
 lives in the panel.
 
-Four things bound the claim, and all four are visible rather than silent:
+Five things bound the claim, and all five are visible rather than silent:
 
 - **A shared length below 8 is only a family if a scalar sibling names it.** Two
   unrelated length-2 arrays agreeing is a coincidence, not an axis.
+- **A shared length of 0 is never a family.** The anchor test above matches on
+  equality, so `0` is satisfied by *any* zero-valued sibling — a Passive session
+  (`Reward_Delay_ms = 0`) whose lick arrays are empty produced a
+  `0 · Reward_Delay_ms` family: an axis announced with a confident name and no
+  rows. The zero check is applied before the anchor test, not after.
 - **A 2–50-value integer array is a label, not a pointer**, so it gets no
   relation badge. Amber `疑似类别标签` and a blue relation badge on one box would
   be two claims arguing with each other.
@@ -352,8 +357,8 @@ When a scan finds relations it also warns if they were cut short, because a
 truncated family is a claim with a silent hole in it:
 
 ```
-注意: 195 处字段关系基于被 --max-items 截断的兄弟集合（带 * 的角标不完整）——
-要完整的关系请加 --max-items 59
+注意: 195 个容器的子项被 --max-items 截断，其中的字段关系可能不完整（带 * 的角标
+不完整）—— 要完整的关系请加 --max-items 59
 ```
 
 ## License
@@ -492,15 +497,19 @@ python scripts/inspect_npy.py <路径> [参数]
 | `348 ×24  ntrials  Trial_start_time  SoundTime …` | 24 个兄弟数组共享首维 348，同级的标量 `ntrials` 给这条轴命名。锚点也是按钮，点它会选中那个标量。 |
 | `= arange(348)  trInd` | `trInd` 取值 0…347 各一次：它是 348 轴的**行号**，不是在索引别的族。 |
 | `→ 348  ntrials  LickTrind` | `LickTrind` 的取值全落在 `[0, 348)` 且铺满——一条「逐舔舐 → 逐试次」的连接。行上标 `nan` 表示数组尾部是补齐位。 |
-| `各容器: 348 / 453 / 485` | 同一套字段布局在不同容器里长度不同。行里印的是其中一个实例的数字，**其余的列出来而不是丢掉**——这条目描述的是 195 个容器，不是一个。 |
+| `各容器: 348 / 453 / 485` | 同一套字段布局在不同容器里长度不同。这一行把**实际出现过的长度**都列出来（最多六个，再多就 `…`），而不是只印一个、让读者以为就这一个。至于有多少个容器共享整套布局，那是标题行的事——`同型容器 ×56`。 |
 
 索引和行号还会在**方框上**带一个角标，不开面板也能在图上看到这条联系。家族归属刻意
 **不**带角标——24 个成员顶着同一个标签会把图刷花，成员名单只进面板。
 
-有四条闸门限制这些断言的强度，且四条都是**看得见的**，没有静默降级：
+有五条闸门限制这些断言的强度，且五条都是**看得见的**，没有静默降级：
 
 - **共享长度小于 8 时，必须有同值标量为它命名才算家族。** 两个长度为 2 的无关数组凑巧
   相同，那是巧合不是轴。
+- **共享长度为 0 的永远不算家族。** 上面那条锚点规则比的是**相等**，于是 `0` 会被任何
+  取值为 0 的兄弟标量满足——一个 Passive 模式（`Reward_Delay_ms = 0`）且舔舐数组为空的
+  记录，曾经产出一条 `0 · Reward_Delay_ms` 家族：一个名字言之凿凿、却一行都没有的轴。
+  零长度这一关排在锚点判定**之前**，不是之后。
 - **2~50 个唯一值的整数数组是标签，不是指针**，因此不给关系角标。让一个方框同时顶着琥珀色
   「疑似类别标签」和蓝色关系角标，等于让两条互相矛盾的断言打架。
 - **角标上的 `*` 表示兄弟集合被 `--max-items` 截断过。** 家族恰恰是最怕「看不见的缺失兄弟」
@@ -660,8 +669,8 @@ python scripts/inspect_npy.py E:/Zhong-et-2025 --expect fig1.py
 关系被截断时也会出声，因为残缺的家族等于一句带着隐形窟窿的断言：
 
 ```
-注意: 195 处字段关系基于被 --max-items 截断的兄弟集合（带 * 的角标不完整）——
-要完整的关系请加 --max-items 59
+注意: 195 个容器的子项被 --max-items 截断，其中的字段关系可能不完整（带 * 的角标
+不完整）—— 要完整的关系请加 --max-items 59
 ```
 
 

@@ -76,9 +76,10 @@ Useful flags:
 `--max-items` is not just a display cap. The relation pass reads a container's
 **children**, so a container cut at 25 of 59 keys produces a family built from
 the 25 it can see — an array whose siblings were hidden looks like it has fewer
-siblings, and nothing on the map would say so. `beh/Beh_sup_train1_*.npy` is
-exactly this shape: every session dict has 59 keys, so the default `25` truncates
-all 195 of them.
+siblings, and nothing on the map would say so. `beh/*.npy` is exactly this
+shape: 142 of its session dicts have 59 keys each, so the default `25` cuts every
+one of them (the run counts 195 cut containers in total — the extras are the
+object arrays holding the sessions).
 
 **Scope: `dict`, `list`/`tuple`, and object-array elements.** It does *not* cap
 an `.npz` member list — those are enumerated from the zip directory and always
@@ -96,8 +97,8 @@ It is not silent. A cut container marks its relations `partial`, badges on its
 children gain a `*`, and stdout names the number that would have been enough:
 
 ```
-注意: 195 处字段关系基于被 --max-items 截断的兄弟集合（带 * 的角标不完整）——
-要完整的关系请加 --max-items 59
+注意: 195 个容器的子项被 --max-items 截断，其中的字段关系可能不完整（带 * 的角标
+不完整）—— 要完整的关系请加 --max-items 59
 ```
 
 There is deliberately no header chip: `--max-items` is per-container, not a
@@ -291,6 +292,11 @@ Rules the pass applies, and why each one exists:
   when a scalar sibling's value equals it (`ntrials = 348` names the axis). The
   anchor may be a scalar, a 0-d array, or a size-1 array — plenty of datasets
   store `ntrials` as `np.array(348)`.
+- **Never a length of 0.** An anchor matches on equality, so `n = 0` is
+  satisfied by any zero-valued sibling — a Passive session (`Reward_Delay_ms =
+  0`) with empty lick arrays claimed a `0 · Reward_Delay_ms` family, i.e. an
+  axis presented with a confident name and no rows. The zero check has to come
+  before the anchor test, not after.
 - A row id (`lo == 0 and hi == size-1 and n_unique == size`) is tested **before**
   index detection, or `trInd = arange(348)` would claim to index its own family.
 - An array that already carries a `疑似类别标签` hint gets no relation badge. A 2–50

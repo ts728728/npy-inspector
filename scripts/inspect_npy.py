@@ -998,6 +998,14 @@ def _tag_relations(node: dict, counter: list, partial: list) -> None:
     for n, members in sorted(arrays.items(), key=lambda kv: (-len(kv[1]), kv[0])):
         if len(members) < 2:
             continue
+        # A length of 0 is never an axis, and it defeats the anchor test in the
+        # worst way: an anchor matches on *equality*, so `n = 0` is satisfied by
+        # any sibling scalar that happens to be zero. A Passive session
+        # (Reward_Delay_ms = 0) whose lick arrays are all empty claimed a
+        # "0 · Reward_Delay_ms" family -- a real pattern printed with a
+        # confident name and no rows. Reject it before the anchor can speak.
+        if n < 1:
+            continue
         anchor = (anchors.get(n) or [None])[0]
         # Below REL_MIN_FAMILY a shared length is likelier coincidence than an
         # axis (two unrelated length-2 arrays), unless a scalar sibling names it.
@@ -2961,9 +2969,9 @@ def main(argv=None) -> int:
         # without anything being wrong) -- but it must not be silent either,
         # because a family is exactly the thing an invisible missing sibling
         # corrupts.
-        print(f"注意: {agg['relations_partial']} 处字段关系基于被 --max-items "
-              f"截断的兄弟集合（带 * 的角标不完整）—— 要完整的关系请加 "
-              f"--max-items {agg.get('relations_widest', 0)}")
+        print(f"注意: {agg['relations_partial']} 个容器的子项被 --max-items "
+              f"截断，其中的字段关系可能不完整（带 * 的角标不完整）—— 要完整的"
+              f"关系请加 --max-items {agg.get('relations_widest', 0)}")
     if agg.get("unsampled"):
         print(f"另有 {agg['unsampled']} 个大数组只读了头部（未加载数据），"
               f"没有取值范围和唯一值")
