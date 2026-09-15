@@ -17,12 +17,15 @@ Safe by design: read-only, no network, never opens a GUI window.
 from __future__ import annotations
 
 import argparse
+import ast
 import html
 import json
 import math
 import os
+import re
 import subprocess
 import sys
+import warnings
 import zipfile
 from pathlib import Path
 
@@ -44,6 +47,17 @@ HAVE_CJK = True
 OBJECT_BYTES_EST = 512
 UNIQUE_CAP = 200_000           # skip np.unique above this many sampled elements
 LABEL_MAX_CLASSES = 50         # unique-count ceiling for the "label-ish" hint
+
+# Field relations: a set of sibling arrays sharing a leading dimension is a
+# "family" -- per-trial fields vs per-lick fields vs per-frame fields, which is
+# the one thing a per-node view can never show. Below this many rows a shared
+# length is more likely a coincidence than a real axis, so a family that small
+# is only kept when a scalar sibling names it (see _tag_relations).
+REL_MIN_FAMILY = 8
+# A 1-D integer-valued array is only a usable pointer if its values actually
+# span the family it points into; "every trial has a condition id in 0..2" is a
+# label, not an index.
+REL_INDEX_COVERAGE = 0.5
 
 
 # --------------------------------------------------------------------------
@@ -98,6 +112,60 @@ def _label_hint(arr, uniq) -> str | None:
         if vals <= {0.0, 1.0}:
             return "疑似 0/1 掩码"
     return None
+
+
+def _index_facts(a: np.ndarray, s: np.ndarray, uniq: np.ndarray,
+                 sampled: bool) -> dict | None:
+    """Whether this array could be a pointer into a sibling family.
+
+    Records raw `int`s only. It must not route them through `_num`: that helper
+    rounds to 4 significant digits above 1e6, so a 1234567-row index would be
+    filed as 1235000 and every later comparison against a family length would be
+    made against a number that was never in the data.
+
+    `sampled` is a correctness gate, not a precision one. min/max over a strided
+    subsample can only be tighter than the truth, so `hi < L` could hold while
+    the real maximum exceeds L -- which would put a confident, wrong "this
+    indexes that family" badge on the box. Arrays past STAT_SAMPLE therefore get
+    no facts at all, and the relation is silently absent rather than wrong.
+
+    NaN is different: it is dropped and counted rather than disqualifying. A
+    frame-to-trial index is routinely padded with NaN at the tail, and refusing
+    to read it would lose a real relation to a real gap in the data. +-inf is
+    not tolerated, because floor(inf) is inf -- an "all integral" test passes on
+    it and int(inf) then raises OverflowError with no handler above it.
+
+    `uniq` comes in already computed: `array_stats` had to call np.unique for
+    its own n_unique, and a second pass over a million-element index array is
+    the difference between a scan that finishes and one that looks hung.
+    """
+    if sampled or a.ndim != 1 or a.size < REL_MIN_FAMILY:
+        return None
+    if a.dtype.kind not in "iuf":
+        return None
+    n_bad = 0
+    if a.dtype.kind == "f":
+        finite = np.isfinite(s)
+        n_bad = int(s.size - finite.sum())
+        if n_bad and not np.all(np.isnan(s[~finite])):
+            return None                     # an inf is not a missing value
+        fin = s[finite] if n_bad else s
+    else:
+        fin = s
+    if fin.size < REL_MIN_FAMILY or not np.all(fin == np.floor(fin)):
+        return None
+    lo, hi = int(np.min(fin)), int(np.max(fin))
+    if lo < 0:
+        return None
+    # NaN counts once in `uniq` however many times it appears, so subtracting
+    # the count would under-report the coverage that gates the index test.
+    nu = int(uniq.size) - (1 if n_bad else 0)
+    if nu < 3:
+        return None
+    facts = {"lo": lo, "hi": hi, "n_unique": nu}
+    if n_bad:
+        facts["nan"] = n_bad
+    return facts
 
 
 def array_stats(a: np.ndarray) -> dict:
@@ -161,6 +229,9 @@ def array_stats(a: np.ndarray) -> dict:
                 st["label_hint"] = hint
             if uniq.size <= 12:
                 st["unique_values"] = [_num(x) for x in uniq]
+            facts = _index_facts(a, s, uniq, sampled)
+            if facts:
+                st["index_like"] = facts
         except Exception:
             pass
 
@@ -181,8 +252,19 @@ def array_stats(a: np.ndarray) -> dict:
 # recursive scan
 # --------------------------------------------------------------------------
 
-def _trunc_node(n_hidden: int) -> dict:
+def _trunc_node(n_hidden: int, total: int) -> dict:
+    # `cut` says *which* cap fired. The two truncations mean opposite things to
+    # the relation pass: hiding siblings with --max-items leaves the container's
+    # field set incomplete (so relations over it are partial), whereas stopping
+    # at --max-depth leaves the container complete and only declines to open a
+    # child. Without the marker the two are the same `kind: "truncated"` and the
+    # check would have to sniff the Chinese in `detail`.
+    # `total` is the count this container really has, and it cannot be recovered
+    # from the node list: after the cut, len(children) is max-items+1 however
+    # many were hidden. The stdout warning needs the real number -- the only
+    # useful thing it can say is which --max-items would have been enough.
     return {"name": f"… 另有 {n_hidden} 项", "kind": "truncated",
+            "cut": "max-items", "hidden": int(n_hidden), "total": int(total),
             "detail": "超出 --max-items，已省略", "children": []}
 
 
@@ -300,13 +382,14 @@ def walk_array(a: np.ndarray, name: str, args, depth: int, acc: str = "") -> dic
                     "name": label, "kind": "error", "acc": sub,
                     "detail": f"展开失败: {type(e).__name__}: {e}", "children": []})
         if flat.size > n:
-            node["children"].append(_trunc_node(flat.size - n))
+            node["children"].append(_trunc_node(flat.size - n, flat.size))
     return node
 
 
 def walk_value(v, name: str, args, depth: int, acc: str = "") -> dict:
     if depth > args.max_depth:
         return {"name": name, "kind": "truncated", "acc": None,
+                "cut": "max-depth",
                 "detail": "达到 --max-depth", "children": []}
     if isinstance(v, np.ndarray):
         return walk_array(v, name, args, depth, acc)
@@ -315,7 +398,7 @@ def walk_value(v, name: str, args, depth: int, acc: str = "") -> dict:
                 "acc": acc, "children": []}
         for i, (k, vv) in enumerate(v.items()):
             if i >= args.max_items:
-                node["children"].append(_trunc_node(len(v) - i))
+                node["children"].append(_trunc_node(len(v) - i, len(v)))
                 break
             node["children"].append(
                 walk_value(vv, str(k), args, depth + 1, f"[{str(k)!r}]"))
@@ -328,12 +411,20 @@ def walk_value(v, name: str, args, depth: int, acc: str = "") -> dict:
             node["children"].append(
                 walk_value(vv, f"[{i}]", args, depth + 1, f"[{i}]"))
         if len(v) > args.max_items:
-            node["children"].append(_trunc_node(len(v) - args.max_items))
+            node["children"].append(_trunc_node(len(v) - args.max_items, len(v)))
         return node
     if isinstance(v, np.generic):
         v = v.item()
-    return {"name": name, "kind": "scalar", "detail": _preview_scalar(v),
+    node = {"name": name, "kind": "scalar", "detail": _preview_scalar(v),
             "acc": acc, "children": []}
+    # A machine-readable copy of the value, for the relation pass to anchor a
+    # family length against (`ntrials = 348` names the 348-row family). `detail`
+    # cannot serve: it is a display string. Typed explicitly, because json.dumps
+    # here runs with default=str, which would turn a stray np.int64 into the
+    # *string* "348" and quietly break the == comparison later.
+    if isinstance(v, (bool, int, float)):
+        node["value"] = v
+    return node
 
 
 def scan_file(path: Path, args) -> dict:
@@ -449,14 +540,308 @@ def scan_file(path: Path, args) -> dict:
     return node
 
 
+# --------------------------------------------------------------------------
+# --expect: reconcile a reference list against what is actually on disk
+# --------------------------------------------------------------------------
+# The failure this exists for is not "the tool hid the file" but "the file was
+# never in the release". Reading analysis code and then hunting for its inputs
+# by eye is exactly the loop where you conclude the map is incomplete when it is
+# not -- so make the code and the disk answer the question between themselves.
+#
+# The extraction is static (ast.parse, never exec): this runs on whatever script
+# the user points at, which is often code from a paper repo nobody has audited.
+
+def _norm_rel(p) -> str:
+    """One spelling of a dataset-relative path, so two sides can be compared.
+
+    Backslashes because the reference code is full of `'beh\\foo.npy'` -- on
+    Windows that separator is a real path, everywhere else it is a literal
+    backslash in a filename, and the intent is unambiguous either way.
+    """
+    p = str(p).replace("\\", "/")
+    while p.startswith("./"):
+        p = p[2:]
+    return p.strip("/")
+
+
+def _literal_str_list(node):
+    """The strings of a literal list/tuple of string constants, else None."""
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return None
+    vals = []
+    for e in node.elts:
+        if isinstance(e, ast.Constant) and isinstance(e.value, str):
+            vals.append(e.value)
+        else:
+            return None
+    return vals
+
+
+def _src(node) -> str:
+    try:
+        return ast.unparse(node)
+    except Exception:
+        return type(node).__name__
+
+
+class _Scope:
+    """Name resolution, narrow on purpose: only literal string-list bindings.
+
+    Enough for the shape this is aimed at -- `fns = ['a.npy', 'b.npy']` then
+    `os.path.join(root, 'process_data', fn)` for `fn in fns` -- and it declines
+    anything else rather than guessing. A guess here would silently shorten the
+    list, and a short list is indistinguishable from a complete one.
+    """
+
+    def __init__(self, tree):
+        self.parent = {}
+        for p in ast.walk(tree):
+            for c in ast.iter_child_nodes(p):
+                self.parent[id(c)] = p
+        # name -> [(lineno, [str, ...])], source order. Kept per-line rather
+        # than last-wins because the same name really is rebound twice in these
+        # scripts (`fns` is 4 files and then 6), and last-wins would report the
+        # second list at the first use site.
+        self.binds = {}
+        for n in ast.walk(tree):
+            if not isinstance(n, ast.Assign):
+                continue
+            vals = _literal_str_list(n.value)
+            if vals is None:
+                continue
+            for t in n.targets:
+                if isinstance(t, ast.Name):
+                    self.binds.setdefault(t.id, []).append((n.lineno, vals))
+        for v in self.binds.values():
+            v.sort()
+
+    def at(self, name, line):
+        """The literal list `name` holds at `line`, or None if unknown."""
+        best = None
+        for ln, vals in self.binds.get(name, ()):
+            if ln <= line:
+                best = vals
+        return best
+
+    def iter_values(self, node, use_line):
+        if isinstance(node, ast.Name):
+            return self.at(node.id, use_line)
+        return _literal_str_list(node)
+
+    def enclosing_comp(self, name, node):
+        """The comprehension that binds `name` around `node`, if any.
+
+        Walked from the node outward rather than searched for globally: `fn` is
+        a loop variable and means nothing outside its own comprehension.
+        """
+        p = self.parent.get(id(node))
+        while p is not None:
+            if isinstance(p, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+                for g in p.generators:
+                    if isinstance(g.target, ast.Name) and g.target.id == name:
+                        return g
+            p = self.parent.get(id(p))
+        return None
+
+    def name_values(self, node, name):
+        g = self.enclosing_comp(name, node)
+        if g is not None:
+            return self.iter_values(g.iter, node.lineno)
+        return self.at(name, node.lineno)
+
+
+def _arg_values(scope, node):
+    """What one path component can be: [str, ...] or None for "cannot say"."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
+    if isinstance(node, ast.Name):
+        return scope.name_values(node, node.id)
+    return None
+
+
+def _is_abs(p: str) -> bool:
+    return bool(re.match(r"^[A-Za-z]:[\\/]", p)) or p.startswith(("/", "\\\\"))
+
+
+def _join_calls(tree):
+    """Every `<something>.join(...)` whose receiver is not a string literal.
+
+    The receiver test drops `' '.join(words)`, which would otherwise look like a
+    path join and contribute a made-up entry.
+    """
+    for n in ast.walk(tree):
+        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == "join"
+                and not isinstance(n.func.value, ast.Constant)):
+            yield n
+
+
+def _div_chain(node):
+    """Flatten `Path(a) / 'b' / 'c'` into its pieces, or None if not one."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        left = _div_chain(node.left)
+        return None if left is None else left + [node.right]
+    return [node]
+
+
+def _path_head(node) -> bool:
+    """Is this the left end of a `Path(...) / ...` chain?
+
+    `/` means two unrelated things in analysis code, and only one of them is a
+    path: `Path(root) / 'a.npy'` versus `a / (b ** n)` in a colour scale. The
+    head of the chain is what tells them apart -- numeric division bottoms out
+    at a Name or a Subscript, never at a `Path(...)` call.
+    """
+    while isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        node = node.left
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id.endswith("Path"))
+
+
+def _div_chains(tree):
+    """Only the outermost `/` chain, so inner nodes are not reported twice.
+
+    Numeric division is skipped silently rather than listed as unresolved:
+    `a/(b**n)` cannot be a path, so calling it "not statically resolvable" would
+    pad the report with things the reader did not ask about and bury the one
+    entry that matters.
+    """
+    parent = {}
+    for p in ast.walk(tree):
+        for c in ast.iter_child_nodes(p):
+            parent[id(c)] = p
+    for n in ast.walk(tree):
+        if not (isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div)):
+            continue
+        if not _path_head(n):
+            continue
+        up = parent.get(id(n))
+        if isinstance(up, ast.BinOp) and isinstance(up.op, ast.Div):
+            continue
+        parts = _div_chain(n)
+        if parts and len(parts) > 1:
+            yield n, parts
+
+
+def _combine(scope, parts, cap=400):
+    """Every relative path the pieces can spell, across the list-valued ones.
+
+    Returns (paths, None) or (None, reason). A component that cannot be
+    determined statically poisons the whole call and is reported as such --
+    reporting three of four components would read as a path that does not exist.
+    """
+    combos = [[]]
+    for i, a in enumerate(parts):
+        vals = _arg_values(scope, a)
+        if i == 0:
+            # The dataset root: a variable (`root`, whose default is one
+            # machine's D:\ path), a `Path(root)` call, or an absolute literal.
+            # Dropped so the result is relative to the root being scanned --
+            # which is what makes it comparable to this machine's disk at all.
+            if isinstance(a, ast.Call) or vals is None or _is_abs(vals[0]):
+                continue
+        if vals is None:
+            return None, f"{_src(a)} 无法静态确定"
+        combos = [c + [v] for c in combos for v in vals]
+        if len(combos) > cap:
+            combos = combos[:cap]
+    if not combos:
+        return None, "只有一个根目录参数，没有可对帐的相对路径"
+    paths, seen = [], set()
+    for c in combos:
+        p = _norm_rel("/".join(c))
+        if p and p not in seen:
+            seen.add(p)
+            paths.append(p)
+    return paths, None
+
+
+def load_expect(path: Path) -> dict:
+    """Read the reference list: a .py is parsed, anything else is one per line."""
+    if path.suffix.lower() == ".py":
+        src = path.read_text(encoding="utf-8", errors="replace")
+        # Windows paths in the analysed script ('E:\beh\x.npy') are invalid
+        # escapes, so parsing it makes CPython print a SyntaxWarning per string
+        # to *our* stderr. We only want the paths, not a lint report on someone
+        # else's file.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse(src)
+        scope = _Scope(tree)
+        entries = []
+        probes = [(n, list(n.args)) for n in _join_calls(tree)]
+        probes += [(n, parts) for n, parts in _div_chains(tree)]
+        for node, parts in probes:
+            where = f"{path.name}:{node.lineno}"
+            paths, why = _combine(scope, list(parts))
+            if paths is None:
+                entries.append({"unresolved": why, "where": where})
+            else:
+                entries += [{"path": p, "where": where} for p in paths]
+        return {"source": path.name, "kind": "py", "entries": entries}
+
+    entries = []
+    for i, line in enumerate(
+            path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        entries.append({"path": _norm_rel(s), "where": f"{path.name}:{i}"})
+    return {"source": path.name, "kind": "list", "entries": entries}
+
+
+def reconcile_expect(exp: dict, present: dict, scanned: set,
+                     root: Path, dirs: set | None = None) -> dict:
+    """Sort the reference list into found / unscanned / missing / unresolved.
+
+    `present` is the whole os.walk result, before --max-files: without it the
+    "on disk but not scanned" state is unreachable, and a file that exists would
+    be reported as missing just because the cap got there first.
+
+    `dirs` are the directories those walks passed through. A reference list may
+    name a folder -- `fig1.py` builds its paths by joining one -- and reporting
+    a folder that is plainly there as "not on disk" would be the exact false
+    negative this feature exists to prevent.
+    """
+    dirs = dirs or set()
+    res = {"source": exp["source"], "found": [], "unscanned": [],
+           "missing": [], "unresolved": [], "dirs": []}
+    for e in exp["entries"]:
+        if "unresolved" in e:
+            res["unresolved"].append(e)
+            continue
+        p = e["path"]
+        key = p.lower()
+        if key in dirs:
+            res["dirs"].append(p)          # exists, and is a folder
+        elif key in scanned:
+            res["found"].append(p)
+        elif key in present:
+            res["unscanned"].append(p)
+        else:
+            res["missing"].append(p)
+    # A path whose *directory* does not exist anywhere is a different problem
+    # from a path that is merely absent, and it is the one that answers "is
+    # process_data there at all?" -- so say it in those words.
+    have = {q.split("/")[0].lower() for q in present}
+    res["missing_dirs"] = sorted(
+        {p.split("/")[0] for p in res["missing"] if "/" in p
+         and p.split("/")[0].lower() not in have})
+    return res
+
+
 def build_tree(root: Path, args) -> dict:
     files: list[Path] = []
+    dir_keys: set = set()
     if root.is_file():
         files = [root]
     else:
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames
                            if not d.startswith(".") and d != "__pycache__"]
+            for d in dirnames:
+                dir_keys.add(_norm_rel(
+                    (Path(dirpath) / d).relative_to(root)).lower())
             for fn in sorted(filenames):
                 if Path(fn).suffix in (".npy", ".npz"):
                     files.append(Path(dirpath) / fn)
@@ -464,7 +849,8 @@ def build_tree(root: Path, args) -> dict:
             # directory walk, and without the true total the truncation warning
             # could only ever say "400 of at least 400", which is no warning.
     found = len(files)
-    files = sorted(files)[: args.max_files]
+    all_files = sorted(files)
+    files = all_files[: args.max_files]
     # A silent cap is worse than no cap: on a large dataset you would get a map
     # of the first N files alphabetically and no way to tell it was partial.
     truncated = found - len(files)
@@ -501,6 +887,31 @@ def build_tree(root: Path, args) -> dict:
     # is tagged `error` and is deliberately not counted as a file, so the root
     # box and the header would otherwise disagree (4 files vs 3).
     st = _tag_stats(tree)
+    # Runs after _tag_stats because the root's `_agg` has to exist first. Every
+    # node already carries its `stats` by now, so this pass can read siblings.
+    rel_partial = [0, 0]
+    _tag_relations(tree, [0], rel_partial)
+    summary = _summarise_relations(tree)
+    if summary:
+        tree["_agg"]["relations"] = summary
+    if rel_partial[0]:
+        tree["_agg"]["relations_partial"] = rel_partial[0]
+        tree["_agg"]["relations_widest"] = rel_partial[1]
+
+    exp = getattr(args, "expect_entries", None)
+    if exp:
+        # `present` is the pre-cap walk and `scanned` the post-cap one: without
+        # the first, "--max-files hid it" and "it was never published" come back
+        # wearing the same face, which is the confusion this feature exists to
+        # end.
+        def _keys(paths):
+            out = set()
+            for f in paths:
+                out.add((root.name if root.is_file()
+                         else _norm_rel(f.relative_to(root))).lower())
+            return out
+        tree["_agg"]["expect"] = reconcile_expect(
+            exp, _keys(all_files) | dir_keys, _keys(files), root, dir_keys)
     detail = f"{st['files']} 个数组文件"
     if st["errors"]:
         detail += f" · {len(st['errors'])} 个读取失败"
@@ -511,6 +922,266 @@ def build_tree(root: Path, args) -> dict:
         tree["_agg"]["truncated"] = truncated
         tree["_agg"]["files_found"] = found
     return tree
+
+
+def _rel_anchor(child: dict):
+    """The one number this child asserts, if it asserts exactly one.
+
+    Anchors name a family length: a sibling `ntrials` of 348 turns "24 arrays
+    that happen to be 348 long" into "24 per-trial fields". Accepts a scalar and
+    also a 0-d or 1-element array, because plenty of datasets store `ntrials` as
+    `np.array(348)` -- that goes through `walk_array`, not the scalar branch, and
+    a scalar-only rule would miss exactly the case it exists for.
+
+    The < 1e6 guard is a `_num` artifact: sizes are stored rounded to 4
+    significant digits past a million, so a larger "anchor" is not the number
+    that was in the file and must not be compared against a shape.
+    """
+    if child.get("kind") == "scalar":
+        v = child.get("value")
+    else:
+        st = child.get("stats")
+        if not st or st.get("size") != 1:
+            return None
+        lo, hi = st.get("min"), st.get("max")
+        if not isinstance(lo, (int, float)) or lo != hi:
+            return None
+        v = lo
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    if not float(v).is_integer() or abs(v) >= 1e6:
+        return None
+    return int(v)
+
+
+def _tag_relations(node: dict, counter: list, partial: list) -> None:
+    """Attach `relations` to every container whose fields relate to each other.
+
+    This is the one fact a per-node view structurally cannot show. A dataset
+    like a behavioural session is a bundle of parallel axes -- 348 trials, 1287
+    licks, 24300 frames -- and the fields only mean something once you know
+    which axis each sits on and which fields bridge two of them. Read one box at
+    a time and `LickTrind` is just "a float array of 1287 values"; read the
+    container and it is the join that makes `LickTime` per-trial.
+
+    Plain DFS, not the bottom-up accumulator `_tag_stats` uses: a relation
+    depends only on a node's own direct children, and every child already has
+    its `stats` by the time this runs.
+
+    `partial` is an accumulator `[count, widest]` for the stdout warning: how
+    many containers had their field set cut by --max-items, and how many
+    children the widest of them actually has -- the number to hand back as
+    `--max-items`, which is the whole point of warning rather than just
+    reporting.
+    """
+    kids = node.get("children") or []
+    arrays: dict[int, list] = {}
+    anchors: dict[int, list] = {}
+    for c in kids:
+        # The anchor is read first, and from every child: `ntrials` is a scalar
+        # and has no `stats` at all, so the array test below would `continue`
+        # past it and the anchor lookup would never fire.
+        a = _rel_anchor(c)
+        if a is not None:
+            anchors.setdefault(a, []).append(c)
+        st = c.get("stats")
+        if not st or not st.get("shape"):
+            continue
+        # `_skipped_array` nodes are members too: their shape and dtype come
+        # from the file header and are exact, and both renderers already fold
+        # them together with loaded arrays of the same shape. Excluding them
+        # would hide the largest tensor in the dataset from its own family --
+        # the one the reader is looking for.
+        arrays.setdefault(int(st["shape"][0]), []).append(c)
+
+    families = []
+    for n, members in sorted(arrays.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        if len(members) < 2:
+            continue
+        anchor = (anchors.get(n) or [None])[0]
+        # Below REL_MIN_FAMILY a shared length is likelier coincidence than an
+        # axis (two unrelated length-2 arrays), unless a scalar sibling names it.
+        if n < REL_MIN_FAMILY and anchor is None:
+            continue
+        families.append({
+            "n": n,
+            "anchor": anchor["name"] if anchor is not None else None,
+            "members": [m["name"] for m in members],
+        })
+
+    fam_lens = sorted(arrays)
+    indexes, rowids = [], []
+    for c in kids:
+        st = c.get("stats") or {}
+        f = st.get("index_like")
+        if not f or c.get("hint"):
+            # An array that already reads as a 2..50-class label is a label, not
+            # a cross-family pointer. Letting it wear both claims at once puts
+            # an amber tag and a relation badge on one box arguing with itself.
+            continue
+        size, lo, hi, nu = int(st["size"]), f["lo"], f["hi"], f["n_unique"]
+        if lo == 0 and hi == size - 1 and nu == size:
+            # A row id, not a pointer: `trInd` is arange(348), it does not
+            # index some other 348-row family. Must be tested first, or every
+            # such array claims to index its own family.
+            rowids.append({"name": c["name"], "n": size})
+            continue
+        cands = [L for L in fam_lens if L >= hi + 1 and L != size]
+        if not cands:
+            continue
+        L = min(cands)          # tightest family that can contain every value
+        if nu < REL_INDEX_COVERAGE * L:
+            # Values sit inside [0, L) but do not span it -- "condition id per
+            # trial" rather than "this row belongs to that trial".
+            continue
+        tgt = (anchors.get(L) or [None])[0]
+        entry = {"name": c["name"], "size": size, "lo": lo, "hi": hi,
+                 "target_n": L,
+                 "target_anchor": tgt["name"] if tgt is not None else None}
+        if f.get("nan"):
+            # Kept on the entry, off the badge: "5% of these are padding" does
+            # not weaken "these values name rows of that family", but it does
+            # belong next to the claim rather than hidden.
+            entry["nan"] = f["nan"]
+        indexes.append(entry)
+
+    # `cut == "max-items"` specifically. `--max-depth` also emits `truncated`
+    # nodes, but it stops *descending* -- the sibling set at this level is
+    # complete, so treating those as partial would put an asterisk on relations
+    # that are not missing anything.
+    cut = [c for c in kids if c.get("cut") == "max-items"]
+    if cut:
+        partial[0] += 1
+        # The container's real child count, read off the marker rather than
+        # len(kids): the cut leaves max-items+1 entries behind whatever was
+        # hidden, so len(kids) would suggest a --max-items that fixes nothing.
+        partial[1] = max(partial[1], max(int(c.get("total") or 0) for c in cut))
+    partial_now = bool(cut)
+    if families or indexes or rowids:
+        # A stable handle for the HTML panel. Its `_id` is a JS-side position
+        # that is reassigned on every 同型合并 toggle, so it cannot be the key
+        # a panel caches; this id rides along in the JSON and survives the
+        # clone. See the panel builder.
+        node["rel_id"] = counter[0]
+        counter[0] += 1
+        node["relations"] = {}
+        if families:
+            node["relations"]["families"] = families
+        if indexes:
+            node["relations"]["indexes"] = indexes
+        if rowids:
+            node["relations"]["rowids"] = rowids
+        if partial_now:
+            # The badge is the dangerous surface: it is a one-glance claim, and
+            # the PNG gets embedded where this container's caveat is nowhere
+            # near it. Mark it rather than suppress it -- suppressing would make
+            # the feature silently absent on exactly the datasets that need it.
+            node["relations"]["partial"] = True
+        star = "*" if partial_now else ""
+        for x in rowids:
+            for c in kids:
+                if c["name"] == x["name"]:
+                    c["rel"] = f"= arange({x['n']}){star}"
+        for x in indexes:
+            # Capped: a segment bypasses the PNG's max_label truncation and
+            # widens the column, so a long anchor would push the whole tree.
+            anchor = (x["target_anchor"] or "")[:12]
+            suffix = f"·{anchor}" if anchor else ""
+            for c in kids:
+                if c["name"] == x["name"]:
+                    c["rel"] = f"→{x['target_n']}{suffix}{star}"
+
+    for c in kids:
+        _tag_relations(c, counter, partial)
+
+
+def _rel_signature(rel: dict) -> str:
+    """Dedup key for the panel summary.
+
+    Deliberately drops every number. The same field layout recurs in all 90
+    sessions of a recording file, and their trial counts differ (348 vs 237) --
+    keying on the numbers would emit 90 near-identical blocks, which is the one
+    thing the panel must not do. Names are sorted because dict order is not
+    stable across sessions, and an unsorted key would split one pattern in two.
+    """
+    fam = sorted(
+        (tuple(sorted(f["members"])), f["anchor"] or "") for f in rel.get("families", []))
+    idx = sorted((i["name"], i["target_anchor"] or "") for i in rel.get("indexes", []))
+    row = sorted(r["name"] for r in rel.get("rowids", []))
+    return repr((fam, idx, row))
+
+
+def _ordered_parts(rel: dict) -> tuple[list, list, list]:
+    """A relation's parts in an order that does not depend on which session it
+    came from.
+
+    `_tag_relations` sorts families by member count and then by length, and
+    length is exactly what differs between sessions -- so the same layout can
+    come out in two different orders, and the panel would then line up the
+    348-trial session's numbers with the 453-trial session's field names.
+    """
+    fams = sorted(rel.get("families", []),
+                  key=lambda f: (-len(f["members"]),
+                                 tuple(sorted(f["members"])), f["anchor"] or ""))
+    rows = sorted(rel.get("rowids", []), key=lambda r: r["name"])
+    idxs = sorted(rel.get("indexes", []),
+                  key=lambda i: (i["name"], i["target_anchor"] or ""))
+    return fams, rows, idxs
+
+
+def _summarise_relations(tree: dict) -> list[dict]:
+    """One pass over the finished tree, deduped and capped exactly once.
+
+    Not folded into `_tag_stats`: that helper rolls up per level and caps at
+    every level, so a parent concatenates children's already-truncated lists and
+    the loss is unrecoverable. Here the collection happens a single time, on the
+    root, which is also the only node the HTML reads.
+
+    Each entry shows one instance's numbers and lists the other values seen for
+    the same slot. The dedup key deliberately ignores every number, so a session
+    with 348 trials and one with 485 collapse into one entry -- good, that is the
+    fact worth reporting ("this layout is the dataset") -- but then printing
+    "348" alone would assert a number that holds for one of 194 containers.
+    """
+    found: dict[str, dict] = {}
+    order: list[str] = []
+
+    def walk(n: dict):
+        rel = n.get("relations")
+        if rel:
+            sig = _rel_signature(rel)
+            fams, rows, idxs = _ordered_parts(rel)
+            hit = found.get(sig)
+            if hit is None:
+                hit = found[sig] = {
+                    "families": fams, "indexes": idxs, "rowids": rows,
+                    "container": n.get("rel_id"),
+                    "container_name": n.get("name"),
+                    "occurrences": 0,
+                    # parallel to families / rowids / indexes
+                    "fam_n": [[] for _ in fams],
+                    "row_n": [[] for _ in rows],
+                    "idx_n": [[] for _ in idxs],
+                }
+                order.append(sig)
+            hit["occurrences"] += 1
+            for i, f in enumerate(fams):
+                hit["fam_n"][i].append(f["n"])
+            for i, r in enumerate(rows):
+                hit["row_n"][i].append(r["n"])
+            for i, x in enumerate(idxs):
+                hit["idx_n"][i].append(x["target_n"])
+        for c in n.get("children") or []:
+            walk(c)
+
+    walk(tree)
+    out = []
+    for s in order[:12]:
+        e = found[s]
+        for key in ("fam_n", "row_n", "idx_n"):
+            e[key] = [sorted(set(v)) for v in e[key]]
+        out.append(e)
+    return out
 
 
 def _tag_stats(node: dict) -> dict:
@@ -592,7 +1263,14 @@ INK = "#0f172a"
 MUTED = "#64748b"
 SHAPE_INK = "#334155"     # shapes read a shade stronger than the dtype beside them
 HINT_INK = "#b45309"      # the amber used for "this looks like a label"
-SEG_COLOR = {"shape": SHAPE_INK, "dtype": MUTED, "plain": MUTED, "hint": HINT_INK}
+# A fourth text accent, for the one claim that is neither a value nor a kind:
+# "this field's values name rows of that other field". Deliberately not amber --
+# amber already means "this looks like a label", and a structural claim wearing
+# a label's colour is a category error. Blue is the one hue left that the kind
+# palette does not use, so it cannot be misread as a node type.
+REL_INK = "#1d4ed8"
+SEG_COLOR = {"shape": SHAPE_INK, "dtype": MUTED, "plain": MUTED,
+             "hint": HINT_INK, "rel": REL_INK}
 
 
 def _fmt_shape(sh) -> str:
@@ -622,6 +1300,20 @@ def _segments(n: dict):
         segs.append(("未加载" if HAVE_CJK else "not loaded", "plain"))
     if not segs and n.get("detail"):
         segs.append((n["detail"], "plain"))
+    # "This array's values name rows of that other family" -- the badge that
+    # makes a join visible where the reader is actually looking. Read only:
+    # writing it into `detail` would be dangerous, because _slim hands the PNG
+    # the *same* node dicts the JSON was serialised from.
+    if n.get("rel"):
+        # `_ascii` deletes rather than transliterates, so "->" and "·" would
+        # both vanish and leave "348ntrials" -- a different, wrong-looking
+        # claim. Build the ASCII form explicitly instead.
+        segs.append((n["rel"] if HAVE_CJK
+                     else n["rel"].replace("→", "->").replace("·", " "), "rel"))
+    if n.get("relations", {}).get("partial"):
+        # The caveat has to sit on the container whose field list was cut, not
+        # only in the footer: the badge it qualifies is drawn on a different box.
+        segs.append(("关系不完整" if HAVE_CJK else "partial", "rel"))
     if n.get("hint"):
         segs.append((n["hint"], "hint"))
     return segs
@@ -820,6 +1512,17 @@ def render_png(root: dict, out: Path, max_label: int = 56,
     fig_w = x0[max_depth] + colw[max_depth] + ml + 0.18
     fig_h = max(cursor, BOX_H) + mt + mb
 
+    # The PNG draws the whole tree -- the HTML's depth control does not reach
+    # here -- so a deep dataset produces an image nothing can open, and it is
+    # produced silently. 20000 px is already well past a poster; past that the
+    # reader needs to be told this artifact is not the one they want.
+    px_w, px_h = int(fig_w * DPI), int(fig_h * DPI)
+    if max(px_w, px_h) > 20000:
+        print(f"注意: PNG 是 {px_w}×{px_h} 像素 / {len(nodes)} 个节点 —— 这个尺寸"
+              f"放不进文档，多数看图程序也打不开。要看结构请用 HTML；"
+              f"确实要 PNG 就在扫描时压低 --max-depth（PNG 画的是全树）",
+              file=sys.stderr)
+
     fig = plt.figure(figsize=(fig_w, fig_h), dpi=DPI)
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(0, fig_w)
@@ -918,6 +1621,29 @@ def render_png(root: dict, out: Path, max_label: int = 56,
                 va="center_baseline", ha="left", zorder=4)
         lx += 0.21 + w_in(label, det_font) + 0.26
 
+    # The rel badge is a text accent, not a node kind, so it gets no swatch --
+    # but it does get a legend line, because a hue that means something and is
+    # nowhere explained is how a map starts lying. Same for the truncation star.
+    _rel_node = next((n for n in nodes if n.get("rel")), None)
+    if _rel_node:
+        # Use a badge that is actually on this map. A made-up example
+        # ("->1200 ntrials" on a dataset with no 1200) reads as a claim about
+        # the data rather than a key to the notation.
+        sample = _rel_node["rel"] if have_cjk else \
+            _rel_node["rel"].replace("→", "->").replace("·", " ")
+        ax.text(lx, ly, sample, fontproperties=det_font, color=REL_INK,
+                va="center_baseline", ha="left", zorder=4)
+        note = "索引到另一个维度" if have_cjk else "indexes another axis"
+        ax.text(lx + w_in(sample, det_font) + 0.18, ly, note,
+                fontproperties=det_font, color=MUTED,
+                va="center_baseline", ha="left", zorder=4)
+        lx += w_in(sample, det_font) + w_in(note, det_font) + 0.44
+    if any(n.get("relations", {}).get("partial") for n in nodes):
+        star = "* 字段被 --max-items 截断，关系不完整" if have_cjk else \
+               "* fields cut by --max-items; relations incomplete"
+        ax.text(lx, ly, star, fontproperties=det_font, color=REL_INK,
+                va="center_baseline", ha="left", zorder=4)
+
     fig.savefig(out, facecolor="white")
     plt.close(fig)
 
@@ -936,10 +1662,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   :root{
     --bg:#f6f7f9; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0;
     --card:#ffffff; --accent:#2563eb; --halo:#fbbf24; --hint:#b45309;
+    --rel:#1d4ed8;
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0b0f19; --fg:#e2e8f0; --muted:#94a3b8; --line:#1f2937;
-           --card:#111827; --accent:#60a5fa; --halo:#f59e0b; --hint:#fbbf24; }
+           --card:#111827; --accent:#60a5fa; --halo:#f59e0b; --hint:#fbbf24;
+           --rel:#93c5fd; }
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -973,7 +1701,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        text-align:center;padding:2px 0}
   .depth input:focus{outline:none;color:var(--accent)}
   main{flex:1;min-height:0;display:flex;flex-direction:column;padding:11px 16px 14px;gap:9px}
-  body.focus .hints,body.focus .idx{display:none}
+  /* An allow-list, not a deny-list: a row that is not named here survives 专注
+     and quietly takes back the height the mode exists to give the map. */
+  body.focus .hints,body.focus .idx,body.focus .relbar{display:none}
   body.focus main{padding:8px 10px 10px}
   /* One row of chips, not a bulleted list: the label hints are the first thing
      worth acting on, and a list of them cost ~95px of the diagram's height. */
@@ -986,6 +1716,36 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        background:transparent;color:var(--hint);font-size:11.5px;
        font-weight:600;cursor:pointer;white-space:nowrap;flex:none}
   .chip:hover{background:var(--hint);border-color:var(--hint);color:#fff}
+  /* ---- 字段关系 panel ----
+     Idle it is one row, exactly like .hints, because every row above the map is
+     taken from the map's height. Only the expanded body grows, and that growth
+     is bounded, so "map gets most of the viewport" survives being opened. */
+  .relbar{background:var(--card);border:1px solid var(--line);border-radius:9px;
+       padding:6px 13px;font-size:12.5px;flex:none}
+  .rbhead{display:flex;align-items:center;gap:8px;overflow-x:auto;
+       scrollbar-width:thin}
+  .rbhead .hlabel{flex:none}
+  .rbtoggle{border:1px solid var(--rel);background:transparent;color:var(--rel);
+       border-radius:20px;padding:1px 9px;font-size:11.5px;font-weight:600;
+       cursor:pointer;white-space:nowrap;flex:none;font-family:inherit}
+  .rbtoggle:hover{background:var(--rel);border-color:var(--rel);color:#fff}
+  .rbbody{display:none;margin-top:7px;padding-top:7px;
+       border-top:1px solid var(--line);max-height:min(34vh,320px);overflow:auto}
+  .relbar.open .rbbody{display:block}
+  .rbfam{display:flex;align-items:baseline;gap:9px;padding:3px 0;flex-wrap:wrap}
+  .rbgrp{display:flex;align-items:baseline;gap:9px;padding:5px 0 1px}
+  .rbgrp + .rbgrp{margin-top:5px;border-top:1px solid var(--line);padding-top:8px}
+  .rbc{font-weight:650;color:var(--fg)}
+  .rbfam.ind{padding-left:15px}
+  .rbn{font-weight:650;color:var(--rel);min-width:74px;flex:none;
+       font-variant-numeric:tabular-nums}
+  .rbmem{border:0;background:transparent;color:var(--fg);font-family:inherit;
+       font-size:11.5px;cursor:pointer;padding:0 1px;
+       border-bottom:1px dotted var(--line)}
+  .rbmem:hover{color:var(--rel);border-bottom-color:var(--rel)}
+  .rbmem.anchor{color:var(--rel);font-weight:650}
+  .rbnote{color:var(--muted);font-size:11px}
+  .rbocc{color:var(--muted);font-size:11px;margin-left:auto;flex:none}
   #diagram{flex:1;min-height:340px;position:relative;border:1px solid var(--line);
        border-radius:10px;background:var(--card);overflow:hidden;cursor:grab}
   #diagram.grabbing{cursor:grabbing}
@@ -1021,6 +1781,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .dt2{color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:11.5px}
   .sh2{color:var(--fg);font-weight:500}
   .hint{color:var(--hint);font-weight:600}
+  .rel2{color:var(--rel);font-weight:600}
   .meta{color:var(--muted);font-size:11px;font-family:ui-monospace,Consolas,monospace}
   .badge{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10.5px;
          border:1px solid currentColor;opacity:.85;flex:none}
@@ -1078,6 +1839,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </header>
 <main>
   <div class="hints" id="hints"></div>
+  <div class="relbar hidden" id="relbar">
+    <div class="rbhead">
+      <span class="hlabel">字段关系</span>
+      <button class="rbtoggle" id="rbtoggle"></button>
+    </div>
+    <div class="rbbody" id="rbbody"></div>
+  </div>
   <div class="idx" id="idx">
     <div class="idxhead">
       <h2>参考索引</h2>
@@ -1128,6 +1896,7 @@ let HALO   = darkMQ.matches ? '#f59e0b' : '#fbbf24';
 let CARD   = darkMQ.matches ? '#111827' : '#ffffff';
 let SHAPE_C = darkMQ.matches ? '#cbd5e1' : '#334155';   // shapes read a shade stronger
 let HINT_C  = darkMQ.matches ? '#fbbf24' : '#b45309';   // "this looks like a label"
+let REL_C   = darkMQ.matches ? '#93c5fd' : '#1d4ed8';   // field relations: a pointer
 let ACCENT  = darkMQ.matches ? '#60a5fa' : '#2563eb';   // selection ring
 const KIND_LABEL = {root:'根',folder:'目录',file:'文件',array:'数组',
   object_array:'object 数组',dict:'dict',list:'list',tuple:'tuple',
@@ -1257,12 +2026,15 @@ function segsOf(n){
   // so their absence is not a signal the reader can use.
   if(st.unsampled) out.push(['未加载', 'plain']);
   if(!out.length && n.detail) out.push([n.detail, 'plain']);
+  if(n.rel) out.push([n.rel, 'rel']);
+  if(n.relations && n.relations.partial) out.push(['关系不完整', 'rel']);
   if(n.hint) out.push([n.hint, 'hint']);
   return out;
 }
 function segColor(k){
   if(k === 'shape') return SHAPE_C;
   if(k === 'hint')  return HINT_C;
+  if(k === 'rel')   return REL_C;
   return MUTED;
 }
 
@@ -1764,7 +2536,9 @@ function build(node, depth){
     row.appendChild(el('span', 'badge', KIND_LABEL[node.kind] || node.kind));
   row.appendChild(el('span', 'nm2', node.name));
   segsOf(node).forEach(s => {
-    const cls = s[1] === 'hint' ? 'dt2 hint' : (s[1] === 'shape' ? 'dt2 sh2' : 'dt2');
+    const cls = s[1] === 'hint' ? 'dt2 hint'
+              : s[1] === 'shape' ? 'dt2 sh2'
+              : s[1] === 'rel'  ? 'dt2 rel2' : 'dt2';
     row.appendChild(el('span', cls, s[0]));
   });
   const st = statsText(node);
@@ -1836,6 +2610,140 @@ if((agg.label_hints || []).length){
   });
 } else hints.classList.add('hidden');
 
+/* ------------------------------------------------------------- 字段关系 */
+/* The map describes one node at a time, so the one thing it structurally cannot
+   show is how nodes relate to each other: which arrays share an axis, and which
+   array is a pointer into which family. That -- not a missing label -- is what
+   "I can't tell where `befRew` comes from" means. This panel holds exactly that,
+   one row per distinct pattern rather than one per occurrence, because 90
+   sessions repeating the same layout is one fact about the dataset.
+
+   Nothing here caches a `_id`. `prep()` reassigns `_id` on every 同型合并
+   toggle, so an id captured now would point at whatever node later landed on
+   that index; each entry instead carries the scanner-side `rel_id` and resolves
+   it at click time -- same reason the hints row re-finds its node by name. */
+const relbar = document.getElementById('relbar');
+const rels = agg.relations || [];
+if(rels.length){
+  relbar.classList.remove('hidden');   // the markup ships hidden; this is what shows it
+  const rbody = document.getElementById('rbbody');
+  const rtog  = document.getElementById('rbtoggle');
+  const relPartial = agg.relations_partial || 0;
+  let nFam = 0, nPtr = 0;
+  rels.forEach(r => {
+    nFam += (r.families || []).length;
+    nPtr += (r.indexes || []).length + (r.rowids || []).length;
+  });
+  rtog.textContent = nFam + ' 个家族 · ' + nPtr + ' 个跨家族索引';
+  const relTogTip = '展开字段关系' + (relPartial
+    ? '（有 ' + relPartial + ' 处关系基于被 --max-items 截断的兄弟集合，标 * 的角标不完整）'
+    : '');
+  rtog.title = relTogTip;
+
+  // A row prints one container's numbers; when the same layout recurs with
+  // different ones (348 trials here, 485 there) the others are listed rather
+  // than dropped -- otherwise the panel states one session's count as if it
+  // were the dataset's.
+  // `348–485` in the label is the whole story when there are two values; past
+  // that the range hides the shape of the spread, so the values get listed.
+  function span(ns){
+    const lo = ns[0], hi = ns[ns.length - 1];
+    return lo === hi ? String(lo) : lo + '–' + hi;
+  }
+  function varNote(ns){
+    if(!ns || ns.length <= 2) return null;
+    const shown = ns.slice(0, 6).join(' / ') + (ns.length > 6 ? ' …' : '');
+    return el('span', 'rbnote', '各容器: ' + shown);
+  }
+
+  // Two-hop lookup: the container by `rel_id`, then the member by name inside it.
+  // Name alone will not do -- `LickFr` exists once per session, so a global
+  // find would jump to the first session's copy from anywhere in the map.
+  function jumpRel(rid, name){
+    const c = NODES.find(x => x.rel_id === rid);
+    if(!c) return;
+    let t = c;
+    if(name){
+      const stack = (c.children || []).slice();
+      while(stack.length){
+        const n = stack.shift();
+        if(n.name === name){ t = n; break; }
+        if(n.children) stack.push.apply(stack, n.children);
+      }
+      if(t === c) return;      // the member is not under the container we found
+    }
+    for(let p = t._parent; p; p = p._parent) collapsed.delete(p._id);
+    select(t._id);
+    fit();
+  }
+  function memBtn(rid, name, cls, title){
+    const b = el('button', 'rbmem' + (cls ? ' ' + cls : ''), name);
+    b.title = title || (name + '　（点击定位）');
+    b.addEventListener('click', () => jumpRel(rid, name));
+    return b;
+  }
+
+  rels.forEach(r => {
+    const rid = r.container;
+    const head = el('div', 'rbgrp');
+    head.appendChild(el('span', 'rbc', r.container_name || '（未命名容器）'));
+    if(r.occurrences > 1)
+      head.appendChild(el('span', 'rbocc', '同型容器 ×' + r.occurrences));
+    rbody.appendChild(head);
+
+    (r.families || []).forEach((f, fi) => {
+      const ns = (r.fam_n || [])[fi] || [f.n];
+      const row = el('div', 'rbfam ind');
+      const lab = el('span', 'rbn', span(ns) + ' ×' + f.members.length);
+      const anchor = (f.members || []).indexOf(f.anchor) < 0 ? f.anchor : null;
+      if(!anchor && !f.anchor) lab.title = '共享首维，但没有同值标量给它命名';
+      row.appendChild(lab);
+      // The anchor is a sibling, not a member (it has no shape, so it cannot be
+      // in its own family) -- shown inline so the reason "348" is a real axis
+      // sits next to the claim rather than in a footnote.
+      if(anchor) row.appendChild(memBtn(rid, anchor, 'anchor', anchor + '　（给这个轴命名，点击定位）'));
+      (f.members || []).forEach(m => row.appendChild(memBtn(rid, m)));
+      const vn = varNote(ns);
+      if(vn) row.appendChild(vn);
+      rbody.appendChild(row);
+    });
+
+    (r.rowids || []).forEach((x, xi) => {
+      const ns = (r.row_n || [])[xi] || [x.n];
+      const row = el('div', 'rbfam ind');
+      row.appendChild(el('span', 'rbn', '= arange(' + span(ns) + ')'));
+      row.appendChild(memBtn(rid, x.name, null, x.name + '　（0…' + (x.n - 1) + ' 各一次，就是行号，点击定位）'));
+      const vn = varNote(ns);
+      if(vn) row.appendChild(vn);
+      rbody.appendChild(row);
+    });
+
+    (r.indexes || []).forEach((x, xi) => {
+      const ns = (r.idx_n || [])[xi] || [x.target_n];
+      const row = el('div', 'rbfam ind');
+      row.appendChild(el('span', 'rbn', '→ ' + span(ns)));
+      if(x.target_anchor) row.appendChild(memBtn(rid, x.target_anchor, 'anchor',
+        x.target_anchor + '　（目标家族，点击定位）'));
+      row.appendChild(memBtn(rid, x.name, null,
+        x.name + '　（取值 ' + x.lo + '…' + x.hi + '，指向 ' + x.target_n + ' 行，点击定位）'));
+      const note = [];
+      if(x.size < x.target_n) note.push('短于目标：只覆盖部分行');
+      if(x.nan) note.push('含 ' + x.nan + ' 个 NaN（补齐位）');
+      if(note.length) row.appendChild(el('span', 'rbnote', note.join('；')));
+      const vn = varNote(ns);
+      if(vn) row.appendChild(vn);
+      rbody.appendChild(row);
+    });
+  });
+
+  rtog.addEventListener('click', () => {
+    const open = relbar.classList.toggle('open');
+    rtog.textContent = rtog.textContent.replace(/[▾▴]$/, '') + (open ? ' ▴' : ' ▾');
+    rtog.title = (open ? '收起字段关系' : relTogTip);
+    fit();          // this is the first row above the map whose height can change
+  });
+}
+
 /* ------------------------------------------------------------ view switch */
 const diagramEl = document.getElementById('diagram');
 const treeWrap = document.getElementById('treewrap');
@@ -1879,6 +2787,7 @@ darkMQ.addEventListener('change', e => {
   CARD    = e.matches ? '#111827' : '#ffffff';
   SHAPE_C = e.matches ? '#cbd5e1' : '#334155';
   HINT_C  = e.matches ? '#fbbf24' : '#b45309';
+  REL_C   = e.matches ? '#93c5fd' : '#1d4ed8';
   ACCENT  = e.matches ? '#60a5fa' : '#2563eb';
   render(); applyView();
 });
@@ -1909,6 +2818,19 @@ def render_html(root: dict, out: Path) -> None:
                      f"<b>{agg['truncated']}</b> 个文件未扫描</span>")
     if agg.get("errors"):
         stats.append(f"<span style='color:#b91c1c'><b>{len(agg['errors'])}</b> 个文件读取失败</span>")
+    exp = agg.get("expect")
+    if exp and (exp.get("missing") or exp.get("unscanned")):
+        # A chip only when something did not reconcile. A green "10/10 found"
+        # chip would be a reassurance nobody asked for, on every run.
+        n_miss = len(exp.get("missing", []))
+        n_un = len(exp.get("unscanned", []))
+        why = f"{n_un} 条在磁盘上但没扫到（调大 --max-files）" if n_un else \
+              f"这些路径不在磁盘上（{exp['source']} 里引用了它们）"
+        stats.append(
+            f"<span style='color:#b45309' title='{html.escape(why)}'>"
+            f"参照清单 <b>{len(exp.get('found', []))}/{len(exp.get('found', [])) + n_miss + n_un}</b>"
+            f"{' 缺失 ' + str(n_miss) if n_miss else ''}"
+            f"{' 未扫 ' + str(n_un) if n_un else ''}</span>")
 
     title = html.escape(f"{root['name']} 数据结构图")
     doc = (HTML_TEMPLATE
@@ -1964,6 +2886,12 @@ def main(argv=None) -> int:
                     help="open the result when done. 'auto' (the default) opens "
                          "the HTML when running in a terminal and does nothing "
                          "when piped/redirected, so scripts stay quiet")
+    ap.add_argument("--expect", default=None, metavar="PATH",
+                    help="reconcile a reference list against this dataset: a .py "
+                         "is parsed statically (never executed) for "
+                         "os.path.join / Path-division paths, anything else is "
+                         "read as one path per line. Reports found / on disk but "
+                         "not scanned / not on disk / not statically resolvable")
     ap.set_defaults(allow_pickle=True)
     args = ap.parse_args(argv)
 
@@ -1971,6 +2899,22 @@ def main(argv=None) -> int:
     if not root_path.exists():
         print(f"路径不存在: {root_path}", file=sys.stderr)
         return 2
+
+    args.expect_entries = None
+    if args.expect:
+        ep = Path(args.expect).expanduser()
+        if not ep.exists():
+            print(f"参照清单不存在: {ep}", file=sys.stderr)
+            return 2
+        try:
+            args.expect_entries = load_expect(ep)
+        except SyntaxError as e:
+            print(f"参照清单解析失败（{ep.name}:{e.lineno} 行）: {e.msg}",
+                  file=sys.stderr)
+            return 2
+        if not args.expect_entries["entries"]:
+            print(f"参照清单里没找到任何路径: {ep}", file=sys.stderr)
+            return 2
 
     out_dir = Path(args.out).expanduser() if args.out else \
         root_path.parent / f"{root_path.stem or root_path.name}_structure_map"
@@ -2010,16 +2954,61 @@ def main(argv=None) -> int:
         print(f"注意: 只扫描了 {agg['files']} / 共 {agg['files_found']} 个文件，"
               f"还有 {agg['truncated']} 个没扫 —— 这张图是残缺的，"
               f"要全扫请加 --max-files {agg['files_found']}")
+    if agg.get("relations_partial"):
+        # Same rule as --max-files: a caveat the reader cannot see is worse than
+        # no feature. This one is narrower -- --max-items is per-container, not a
+        # global cap, so it gets no header chip (on most datasets it would fire
+        # without anything being wrong) -- but it must not be silent either,
+        # because a family is exactly the thing an invisible missing sibling
+        # corrupts.
+        print(f"注意: {agg['relations_partial']} 处字段关系基于被 --max-items "
+              f"截断的兄弟集合（带 * 的角标不完整）—— 要完整的关系请加 "
+              f"--max-items {agg.get('relations_widest', 0)}")
     if agg.get("unsampled"):
         print(f"另有 {agg['unsampled']} 个大数组只读了头部（未加载数据），"
               f"没有取值范围和唯一值")
     if agg.get("errors"):
         print(f"读取失败 {len(agg['errors'])} 个: {', '.join(agg['errors'][:5])}")
+    if agg.get("expect"):
+        _print_expect(agg["expect"], root_path)
     for p in made:
         print(f"  -> {p}")
 
     _maybe_open(args.open_what, made)
     return 0
+
+
+def _print_expect(exp: dict, root: Path) -> None:
+    """The reconciliation, on stdout -- the primary surface for this feature.
+
+    Printed as a table rather than a count because the whole point is to let the
+    reader check the claim against the code themselves; a number would have to
+    be trusted, a list can be verified.
+    """
+    print(f"参照清单对帐 ({exp['source']} → {root.name}):")
+
+    def block(mark: str, label: str, items: list, limit: int = 8):
+        if not items:
+            return
+        print(f"  {mark} {label} {len(items)}")
+        for x in items[:limit]:
+            print(f"      {x}")
+        if len(items) > limit:
+            print(f"      … 另有 {len(items) - limit} 条")
+
+    block("✓", "找到", exp.get("found", []))
+    block("▣", "是目录，不是文件", exp.get("dirs", []))
+    block("△", "在磁盘上但未扫描", exp.get("unscanned", []))
+    block("✗", "不在磁盘上", exp.get("missing", []))
+    if exp.get("missing_dirs"):
+        print(f"      注意: 目录 {', '.join(exp['missing_dirs'])}/ 整个不存在 —— "
+              f"不是被工具藏了，是这个 release 里就没有")
+    for u in exp.get("unresolved", [])[:5]:
+        print(f"  ? 无法静态确定  {u['where']}  {u['unresolved']}")
+    if len(exp.get("unresolved", [])) > 5:
+        print(f"  ? 无法静态确定  另有 {len(exp['unresolved']) - 5} 处")
+    if exp.get("missing") and not exp.get("unscanned"):
+        print("  （清单与磁盘的差集就是这些；要看磁盘上真有什么，读 JSON 或导图）")
 
 
 def _maybe_open(what: str, made: list) -> None:

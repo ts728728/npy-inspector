@@ -140,7 +140,12 @@
                   4.0,
                   5.0,
                   6.0
-                ]
+                ],
+                "index_like": {
+                  "lo": 0,
+                  "hi": 6,
+                  "n_unique": 7
+                }
               },
               "children": [],
               "hint": "疑似类别标签（7 类）",
@@ -254,6 +259,7 @@
                       "detail": "0",
                       "acc": "['session_id']",
                       "children": [],
+                      "value": 0,
                       "_agg": {
                         "files": 0,
                         "arrays": 0,
@@ -318,6 +324,7 @@
                           "detail": "0",
                           "acc": "['depth']",
                           "children": [],
+                          "value": 0,
                           "_agg": {
                             "files": 0,
                             "arrays": 0,
@@ -403,6 +410,7 @@
                       "detail": "1",
                       "acc": "['session_id']",
                       "children": [],
+                      "value": 1,
                       "_agg": {
                         "files": 0,
                         "arrays": 0,
@@ -467,6 +475,7 @@
                           "detail": "2",
                           "acc": "['depth']",
                           "children": [],
+                          "value": 2,
                           "_agg": {
                             "files": 0,
                             "arrays": 0,
@@ -552,6 +561,7 @@
                       "detail": "2",
                       "acc": "['session_id']",
                       "children": [],
+                      "value": 2,
                       "_agg": {
                         "files": 0,
                         "arrays": 0,
@@ -615,6 +625,7 @@
                           "detail": "4",
                           "acc": "['depth']",
                           "children": [],
+                          "value": 4,
                           "_agg": {
                             "files": 0,
                             "arrays": 0,
@@ -712,6 +723,21 @@
               "bad_frames  —  疑似类别标签（5 类）"
             ],
             "errors": []
+          },
+          "rel_id": 0,
+          "relations": {
+            "families": [
+              {
+                "n": 1200,
+                "anchor": null,
+                "members": [
+                  "dff",
+                  "labels",
+                  "conditions",
+                  "valid_mask"
+                ]
+              }
+            ]
           }
         }
       ],
@@ -3085,6 +3111,34 @@
     ],
     "errors": [
       "broken.npy"
+    ],
+    "relations": [
+      {
+        "families": [
+          {
+            "n": 1200,
+            "anchor": null,
+            "members": [
+              "dff",
+              "labels",
+              "conditions",
+              "valid_mask"
+            ]
+          }
+        ],
+        "indexes": [],
+        "rowids": [],
+        "container": 0,
+        "container_name": "session_01.npz",
+        "occurrences": 1,
+        "fam_n": [
+          [
+            1200
+          ]
+        ],
+        "row_n": [],
+        "idx_n": []
+      }
     ]
   }
 }
